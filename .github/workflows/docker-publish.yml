@@ -12,17 +12,22 @@ on:
 
 env:
   IMAGE_NAME: timeline-cv
+  # 多架构：amd64（主流服务器）+ arm64（树莓派/ARM 云主机）
+  PLATFORMS: linux/amd64,linux/arm64
 
 jobs:
   build-push:
     runs-on: ubuntu-latest
     # 先配置 GitHub Secrets（Settings -> Secrets and variables -> Actions）：
-    #   DOCKERHUB_USERNAME = Docker Hub 用户名
+    #   DOCKERHUB_USERNAME = cnqsxdy
     #   DOCKERHUB_TOKEN    = Docker Hub Access Token（Account Settings -> Security，
     #                        权限勾 Read/Write/Delete）
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
+
+      - name: 准备 QEMU（多架构模拟）
+        uses: docker/setup-qemu-action@v3
 
       - name: 准备 Buildx
         uses: docker/setup-buildx-action@v3
@@ -42,12 +47,12 @@ jobs:
             type=ref,event=branch
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha
 
       - name: 构建并推送
         uses: docker/build-push-action@v6
         with:
           context: .
+          platforms: ${{ env.PLATFORMS }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
