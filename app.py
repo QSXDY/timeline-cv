@@ -447,15 +447,38 @@ def admin_basic():
     conn = db.get_db()
     if request.method == "POST":
         action = request.form.get("action", "")
-        if action == "delete_avatar":
+        if action == "upload_avatar":
+            f = request.files.get("avatar")
+            if not (f and f.filename):
+                conn.close()
+                flash("未选择文件")
+                return redirect(url_for("admin_basic"))
+            ext = f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else ""
+            if ext not in ALLOWED_EXT:
+                conn.close()
+                flash("头像格式不支持（jpg/png/gif/webp）")
+                return redirect(url_for("admin_basic"))
+            f.stream.seek(0)
+            try:
+                img = Image.open(f.stream)
+                img.load()
+            except Exception:
+                conn.close()
+                flash("头像文件损坏，请换一张")
+                return redirect(url_for("admin_basic"))
+            av_dir = os.path.join(UPLOADS, "_avatar")
+            os.makedirs(av_dir, exist_ok=True)
             row = conn.execute("SELECT avatar FROM basic_info WHERE id=1").fetchone()
             if row and row["avatar"]:
-                p = os.path.join(UPLOADS, "_avatar", row["avatar"])
-                if os.path.isfile(p):
-                    os.remove(p)
-                conn.execute("UPDATE basic_info SET avatar='' WHERE id=1")
-                conn.commit()
-                flash("头像已删除")
+                old_p = os.path.join(av_dir, row["avatar"])
+                if os.path.isfile(old_p):
+                    os.remove(old_p)
+            filename = uuid.uuid4().hex[:12] + ".webp"
+            _save_webp(img, os.path.join(av_dir, filename))
+            conn.execute("UPDATE basic_info SET avatar=? WHERE id=1", (filename,))
+            conn.commit()
+            flash("头像已更新")
+            conn.close()
             return redirect(url_for("admin_basic"))
         fields = [
             "name",
@@ -499,6 +522,14 @@ def admin_basic():
             _save_webp(img, os.path.join(av_dir, filename))
             conn.execute("UPDATE basic_info SET avatar=? WHERE id=1", (filename,))
             flash("基础信息已保存，头像已更新")
+        elif request.form.get("delete_avatar"):
+            row = conn.execute("SELECT avatar FROM basic_info WHERE id=1").fetchone()
+            if row and row["avatar"]:
+                p = os.path.join(UPLOADS, "_avatar", row["avatar"])
+                if os.path.isfile(p):
+                    os.remove(p)
+                conn.execute("UPDATE basic_info SET avatar='' WHERE id=1")
+            flash("基础信息已保存，头像已删除")
         else:
             flash("基础信息已保存")
         conn.commit()

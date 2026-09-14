@@ -253,16 +253,27 @@ input:focus, textarea:focus, select:focus {
 .muted { color: var(--ink-2); font-size: 13px; }
 
 /* ---------- 个人照片（基础信息） ---------- */
-.avatar-row { display: flex; gap: 22px; align-items: flex-start; }
+.lead-photo { align-items: stretch; }
+.lead-cell { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.lead-cell textarea { flex: 1; min-height: 170px; resize: vertical; }
+.photo-cell { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.photo-label { display: block; font-size: 13px; color: var(--ink-2); margin: 16px 0 6px; font-weight: 500; }
+.photo-inner { display: flex; gap: 26px; align-items: stretch; flex: 1; background: rgba(120, 120, 128, 0.06); border-radius: 10px; padding: 18px; }
+.photo-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.photo-text .panel-sub { margin: 0; }
+.photo-text .muted { margin: 0; }
+.photo-cell .avatar-preview { width: 180px; }
+.photo-btns { display: flex; gap: 10px; align-items: center; margin-top: auto; padding-top: 14px; }
+.photo-btns .btn { display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 20px; line-height: 1; box-sizing: border-box; cursor: pointer; }
 .avatar-preview {
-  flex: none; width: 108px; height: 108px; border-radius: 50%; overflow: hidden;
+  flex: none; width: 260px; aspect-ratio: 3/4; border-radius: 12px; overflow: hidden;
   border: 1px solid var(--line); background: rgba(120, 120, 128, 0.06);
   display: flex; align-items: center; justify-content: center;
 }
 .avatar-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .avatar-preview.empty span { color: var(--ink-3); font-size: 12px; }
-.avatar-ops { flex: 1; min-width: 0; }
-.avatar-ops input[type="file"] { font-size: 13.5px; }
+.avatar-upload { margin-bottom: 2px; }
+.avatar-del { margin-top: 8px; }
 
 /* ---------- 登录页 ---------- */
 .login-box {
@@ -304,8 +315,10 @@ input:focus, textarea:focus, select:focus {
   .upload-box .inline .btn { width: 100%; }
   .img-card .meta .op select { font-size: 13px; }
   .img-card .meta .op .btn { padding: 6px 12px; font-size: 13px; }
-  .avatar-row { flex-direction: column; align-items: center; text-align: center; }
-  .avatar-ops input[type="file"] { font-size: 14px; }
+  .lead-photo { flex-direction: column; align-items: stretch; }
+  .photo-inner { flex-direction: column; align-items: center; text-align: center; }
+  .photo-text { align-items: center; }
+  .photo-cell .avatar-preview { width: 160px; }
 }
 
 

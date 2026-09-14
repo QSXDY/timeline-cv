@@ -4,23 +4,24 @@
 {% for s in nav_items %}
 {% if s.key == 'basic' %}
 <section class="hero{% if info.avatar %} with-avatar{% endif %}">
+  <p class="eyebrow">{{ s.nav_label }}</p>
   {% if info.avatar %}
   <div class="hero-avatar"><img src="{{ url_for('static', filename='uploads/_avatar/' + info.avatar) | cdn }}" alt="{{ info.name }}"></div>
   {% endif %}
   <div class="hero-text">
-    <p class="eyebrow">{{ s.nav_label }}</p>
     <h1>{{ info.name }}</h1>
     <p class="role">{{ info.role }}</p>
     <p class="lead">{{ info.lead }}</p>
-    <div class="facts">
-      <div><b>求职意向</b>{{ info.intent }}</div>
-      <div><b>期望薪资</b>{{ info.salary }}</div>
-      <div><b>期望工作地</b>{{ info.location }}</div>
-      <div><b>联系方式</b><a href="mailto:{{ info.email }}">{{ info.email }}</a></div>
-      <div><b>基本情况</b>{{ info.profile }}</div>
-    </div>
   </div>
 </section>
+
+<div class="facts">
+  <div><b>求职意向</b><span>{{ info.intent }}</span></div>
+  <div><b>期望薪资</b><span>{{ info.salary }}</span></div>
+  <div><b>期望工作地</b><span>{{ info.location }}</span></div>
+  <div><b>联系方式</b><a href="mailto:{{ info.email }}">{{ info.email }}</a></div>
+  <div><b>基本情况</b><span>{{ info.profile }}</span></div>
+</div>
 
 {% elif s.key == 'summary' %}
 <section id="summary">

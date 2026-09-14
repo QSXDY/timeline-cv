@@ -1,12 +1,12 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ info.name }} · {{ info.role }}</title>
 <link rel="icon" href="{{ url_for('static', filename='logo.webp') | cdn }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-<script defer src="{{ url_for('static', filename='js/script.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20260915l">
+<script defer src="{{ url_for('static', filename='js/script.js') }}?v=20260915l"></script>
 </head>
 <body>
 
@@ -27,7 +27,7 @@
 
 <footer>
   <span>{{ info.name }} · {{ info.role }} · {{ info.email }}</span>
-  <span>每条项目可点击展开配图 · 本页可直接打印为 PDF</span>
+  <span>每条项目可点击展开配图 · <a onclick="window.print()" class="print-link">本页可直接打印为 PDF</a></span>
 </footer>
 
 </body>

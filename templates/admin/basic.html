@@ -4,7 +4,7 @@
 <h1>基础信息</h1>
 <p class="hint">前台首页顶部（名字 / 标题 / 简介 / 联系方式等）。</p>
 
-<form method="post" action="{{ url_for('admin_basic') }}" enctype="multipart/form-data">
+<form method="post" action="{{ url_for('admin_basic') }}" enctype="multipart/form-data" id="main-form">
   <input type="hidden" name="_csrf" value="{{ session.csrf }}">
   <div class="panel">
     <div class="row2">
@@ -17,8 +17,36 @@
         <input type="text" name="role" value="{{ info.role }}" required>
       </div>
     </div>
-    <label>简介（lead）</label>
-    <textarea name="lead" rows="4">{{ info.lead }}</textarea>
+    <div class="row2 lead-photo">
+      <div class="lead-cell">
+        <label>简介（lead）</label>
+        <textarea name="lead" rows="4">{{ info.lead }}</textarea>
+      </div>
+      <div class="photo-cell">
+        <p class="photo-label">个人照片（可选）</p>
+        <div class="photo-inner">
+          <div class="photo-text">
+            <p class="panel-sub">3:4 竖版头像</p>
+            <p class="panel-sub">显示在前台首页右侧</p>
+            <p class="panel-sub">不传，则前台完全不留痕迹。</p>
+            <p class="muted">支持格式：jpg / png / gif / webp</p>
+            <p class="muted">大小限制：≤ 20 MB</p>
+            <div class="photo-btns">
+              <input type="file" name="avatar" accept="image/*" id="avatar-file" onchange="selectAvatar()" hidden>
+              <button type="button" class="btn" onclick="document.getElementById('avatar-file').click()">选择文件</button>
+              {% if info.avatar %}
+              <button type="button" class="btn danger" onclick="markDelete()" id="del-btn">删除头像</button>
+              {% endif %}
+            </div>
+          </div>
+          <div class="avatar-preview">
+            {% if info.avatar %}<img src="{{ url_for('static', filename='uploads/_avatar/' + info.avatar) }}" alt="" id="av-img">
+            <span class="av-empty" id="av-empty" style="display: none;">未上传</span>
+            {% else %}<span class="av-empty">未上传</span>{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="row2">
       <div>
         <label>求职意向</label>
@@ -45,31 +73,55 @@
       <button class="btn" type="submit">保存</button>
     </div>
   </div>
-
-  <div class="panel">
-    <h2>个人照片（可选）</h2>
-    <p class="panel-sub">1:1 头像，显示在前台首页顶部；不传则前台完全不留痕迹。</p>
-    <div class="avatar-row">
-      {% if info.avatar %}
-      <div class="avatar-preview"><img src="{{ url_for('static', filename='uploads/_avatar/' + info.avatar) }}" alt=""></div>
-      {% else %}
-      <div class="avatar-preview empty"><span>未上传</span></div>
-      {% endif %}
-      <div class="avatar-ops">
-        <div class="avatar-btns">
-          <input type="file" name="avatar" accept="image/*">
-          {% if info.avatar %}<button class="btn small danger" type="submit" form="del-avatar">删除头像</button>{% endif %}
-        </div>
-        <p class="muted">jpg / png / gif / webp，≤20MB</p>
-      </div>
-    </div>
-  </div>
 </form>
 
-{% if info.avatar %}
-<form id="del-avatar" method="post" action="{{ url_for('admin_basic') }}" onsubmit="return confirm('删除头像？')" style="display: none;">
-  <input type="hidden" name="_csrf" value="{{ session.csrf }}">
-  <input type="hidden" name="action" value="delete_avatar">
-</form>
-{% endif %}
+<script>
+function selectAvatar() {
+  var input = document.getElementById('avatar-file');
+  var f = input.files && input.files[0];
+  if (!f) return;
+  var url = URL.createObjectURL(f);
+  var img = document.getElementById('av-img');
+  if (!img) {
+    img = document.createElement('img');
+    img.id = 'av-img';
+    img.alt = '';
+    var pv = document.querySelector('.photo-cell .avatar-preview');
+    pv.insertBefore(img, pv.firstChild);
+  }
+  img.src = url;
+  img.style.display = '';
+  var empty = document.getElementById('av-empty');
+  if (empty) empty.style.display = 'none';
+  unmarkDelete();
+}
+function markDelete() {
+  var form = document.getElementById('main-form');
+  var flag = document.getElementById('del-flag');
+  if (!flag) {
+    flag = document.createElement('input');
+    flag.type = 'hidden';
+    flag.name = 'delete_avatar';
+    flag.id = 'del-flag';
+    flag.value = '1';
+    form.appendChild(flag);
+  }
+  var img = document.getElementById('av-img');
+  var empty = document.getElementById('av-empty');
+  if (img) img.style.display = 'none';
+  if (empty) empty.style.display = '';
+  var btn = document.getElementById('del-btn');
+  if (btn) btn.style.display = 'none';
+}
+function unmarkDelete() {
+  var flag = document.getElementById('del-flag');
+  if (flag) flag.remove();
+  var img = document.getElementById('av-img');
+  var empty = document.getElementById('av-empty');
+  if (img) img.style.display = '';
+  if (empty) empty.style.display = 'none';
+  var btn = document.getElementById('del-btn');
+  if (btn) btn.style.display = '';
+}
+</script>
 {% endblock %}

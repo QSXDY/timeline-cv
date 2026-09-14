@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}后台管理{% endblock %} · 杨芳清简历</title>
 <link rel="icon" href="{{ url_for('static', filename='logo.webp') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v=20260915m">
 </head>
 <body>
 <div class="admin-wrap">
@@ -52,7 +52,7 @@
     {% block content %}{% endblock %}
   </div>
 </div>
-<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin.js') }}?v=20260915m"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

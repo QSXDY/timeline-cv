@@ -24,10 +24,10 @@
     {% if edit %}<input type="hidden" name="id" value="{{ edit.id }}">{% endif %}
     <div class="row2">
       <div><label>职位</label><input type="text" name="position" value="{{ edit.position if edit else '' }}" required></div>
-      <div><label>公司 / 单位</label><input type="text" name="org" value="{{ edit.org if edit else '' }}"></div>
+      <div><label>公司性质（如新媒体公司、广告公司、电视台）</label><input type="text" name="org" value="{{ edit.org if edit else '' }}"></div>
     </div>
     <div class="row2">
-      <div><label>职位一句话描述（显示在公司下方）</label><input type="text" name="org_desc" value="{{ edit.org_desc if edit else '' }}"></div>
+      <div><label>公司全称（显示在公司性质下方）</label><input type="text" name="org_desc" value="{{ edit.org_desc if edit else '' }}"></div>
       <div><label>日期（如 2016 — 2026）</label><input type="text" name="years" value="{{ edit.years if edit else '' }}"></div>
     </div>
     <label>工作内容（每行一条，自动转列表）</label>
