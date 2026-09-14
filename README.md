@@ -111,12 +111,15 @@ cd yfq-resume
 docker compose up -d --build
 ```
 
-- 镜像内已内置「首次启动种子」：uploads 图片、`resume.db`、`secret.key`，
-  挂载卷为空/缺失时自动恢复，**部署零操作**
+- **纯净镜像（不含任何用户数据）**：`.dockerignore` 已排除 `resume.db`、`secret.key`、
+  `static/uploads/`、`backups/`、`logo`；**把镜像分享给别人 = 全新空站**
+  （别人拉镜像、`docker compose up` 后首次启动自动建空库 + 默认管理员 **admin / admin**，
+  登录后请在系统设置中改密码；也可用环境变量 `YFQ_ADMIN_USER` / `YFQ_ADMIN_PASS` 覆盖默认值）
+- 你自己的部署：`./data/` 挂载卷里有 `resume.db` 就直接用（不会被覆盖），没有则自动建空库
 - 数据持久化在宿主机 `./data/` 目录：`resume.db` + `secret.key` 在 `./data/`，
   上传图片在 `./data/uploads/`（与镜像分离，1Panel 文件管理可直接看到/备份）
-- **全站 LOGO**：前台顶栏 / 后台侧边栏 / 登录页共用 `static/logo.webp`；
-  Docker 部署时把新 LOGO 放到 `./data/logo.png` 或 `./data/logo.webp`（`./data` 已整体挂载），
+- **全站 LOGO**：前台顶栏 / 后台侧边栏 / 登录页共用 `static/logo.webp`（镜像内置中性默认占位 logo）；
+  把新 LOGO 放到 `./data/logo.png` 或 `./data/logo.webp`（`./data` 已整体挂载），
   放 png 会自动转 webp，`docker restart yfq-resume` 即生效。
   ⚠️ 不要单独 bind mount 单文件（Docker 会把不存在的宿主文件建成目录导致启动失败）
 - 数据库路径由环境变量覆盖（`RESUME_DB=/app/data/resume.db`、`SECRET_KEY_FILE=/app/data/secret.key`），

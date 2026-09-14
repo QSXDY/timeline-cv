@@ -1,4 +1,6 @@
-# yfq-resume 简历站 · 生产镜像
+# yfq-resume 简历站 · 生产镜像（纯净版：不含任何用户数据）
+# 数据（resume.db / uploads / secret.key / logo / backups）由挂载卷提供，
+# 首次启动 app.py 自动建空库 + 默认管理员，拉镜像即全新网站。
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -7,16 +9,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 应用代码
+# 应用代码（.dockerignore 已排除 resume.db / uploads / secret.key / backups / logo）
 COPY . .
 
-# 制作“首次启动种子”：uploads 图片、数据库、会话密钥、LOGO
-# （挂载卷为空/缺失时由 entrypoint 恢复，保证部署零操作）
-RUN mkdir -p /app/data_seed/uploads \
-    && cp -r /app/static/uploads/. /app/data_seed/uploads/ \
-    && cp /app/resume.db /app/data_seed/resume.db \
-    && cp /app/secret.key /app/data_seed/secret.key \
-    && cp /app/static/logo.webp /app/data_seed/logo.webp
+# 内置中性默认 LOGO（非用户品牌；部署方可通过 ./data/logo.png 覆盖）
+RUN python -c "from PIL import Image, ImageDraw; im=Image.new('RGBA',(256,256),(0,0,0,0)); d=ImageDraw.Draw(im); d.rounded_rectangle([8,8,248,248], radius=56, fill=(20,126,251)); im.save('/app/static/logo.webp','WEBP',quality=100)"
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

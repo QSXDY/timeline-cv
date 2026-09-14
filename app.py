@@ -126,6 +126,34 @@ def hash_password(password, iterations=260000):
     return f"pbkdf2_sha256${iterations}${salt}${digest}"
 
 
+def _ensure_first_run():
+    """首次启动自举（幂等，可重复调用）：
+    - 确保上传目录存在（干净镜像无 static/uploads）
+    - 建空库（无 resume.db 时自动建全表）
+    - admin 表为空时创建默认管理员 admin/admin（可用 YFQ_ADMIN_USER / YFQ_ADMIN_PASS
+      环境变量覆盖），登录后请在系统设置中立即修改密码。已有数据的库不受影响。"""
+    os.makedirs(UPLOADS, exist_ok=True)
+    db.init_db()
+    try:
+        conn = db.get_db()
+        n = conn.execute("SELECT COUNT(*) FROM admin").fetchone()[0]
+        if n == 0:
+            user = os.environ.get("YFQ_ADMIN_USER", "admin")
+            pw = os.environ.get("YFQ_ADMIN_PASS", "admin")
+            conn.execute(
+                "INSERT INTO admin (id, username, password_hash) VALUES (1, ?, ?)",
+                (user, hash_password(pw)),
+            )
+            conn.commit()
+            print(f"[init] 已创建默认管理员 {user}（默认密码 {pw}，登录后请立即修改）")
+        conn.close()
+    except Exception as e:
+        print("[init] 管理员检查跳过:", e)
+
+
+_ensure_first_run()
+
+
 def _save_webp(im, path, quality=100):
     """图片统一转 WEBP 落盘（quality=100，无视觉损失；保留透明通道）。"""
     if im.mode not in ("RGB", "RGBA"):

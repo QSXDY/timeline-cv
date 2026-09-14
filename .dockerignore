@@ -7,3 +7,15 @@ _check.py
 .git/
 .idea/
 .vscode/
+
+# 用户数据（纯净镜像：严禁打入 build context / 镜像）
+resume.db
+resume.db.*
+*.db
+*.db.bak*
+secret.key
+static/uploads/
+backups/
+data/
+**/logo.png
+**/logo.webp
