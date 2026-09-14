@@ -106,10 +106,23 @@ skill_tags     (id, card_id FK CASCADE, name, sort)
 
 ## 四·B、Docker 部署（1Panel / 服务器）
 
+**生产（推荐，拉 Docker Hub 镜像，已打通自动构建）：**
+
 ```bash
 cd yfq-resume
-docker compose up -d --build
+cp .env.example .env        # 可选：想固定版本就改 RESUME_IMAGE=cnqsxdy/timeline-cv:1.0.0
+docker compose pull
+docker compose up -d
 ```
+
+**开发（本地构建）：**
+
+```bash
+RESUME_IMAGE=yfq-resume:local docker compose up -d --build
+```
+
+- **镜像**：`cnqsxdy/timeline-cv:latest`（Docker Hub，amd64 + arm64 双架构；
+  push main 自动重建，见「四·D」）；不设 `RESUME_IMAGE` 默认即拉此镜像
 
 - **纯净镜像（不含任何用户数据）**：`.dockerignore` 已排除 `resume.db`、`secret.key`、
   `static/uploads/`、`backups/`、`logo`；**把镜像分享给别人 = 全新空站**
@@ -128,7 +141,8 @@ docker compose up -d --build
 - 数据库路径由环境变量覆盖（`RESUME_DB=/app/data/resume.db`、`SECRET_KEY_FILE=/app/data/secret.key`），
   **不要**直接 bind mount 单文件（Docker 会把不存在的宿主文件建成目录导致启动失败）
 - 网络使用 `1panel-network`（external），配合 1Panel 网站 → 反向代理 → 容器 `127.0.0.1:5000`
-- 更新代码后：`docker compose up -d --build` 重建；数据不受影响
+- 更新：生产 = `docker compose pull && docker compose up -d`（升级改 `.env` 版本号重拉即可）；
+  开发 = `docker compose up -d --build`；数据都不受影响
 - 端口如需直连可保留 `ports: "5000:5000"`，纯走反代可删掉该段
 
 ---
@@ -161,19 +175,23 @@ python -c "import app; c = app.app.test_client(); print('首页:', c.get('/').st
   `app.py` 备份文件 `open()` 泄漏 → `with` 上下文；全量 `%` 格式化 → f-string、import 排序、
   dict 推导等 15 项自动修复 + 3 文件统一格式化
 
-- **CI/CD 自动构建（GitHub Actions → Docker Hub）**：push 到 main 自动构建推送 `:latest`；
-  打 `v*` 标签自动推送 `:v1.0.0` / `:v1.0`。首次配置一次（见「四·D」），之后**零操作**
+- **CI/CD 自动构建（GitHub Actions → Docker Hub）✅ 已验证（2026-09-15）**：push 到 main 自动构建推送
+  `:latest`（amd64 + arm64 双架构）；打 `v*` 标签自动推送 `:v1.0.0` / `:v1.0`。首次配置一次（见「四·D」），
+  之后**零操作**
 - **两种部署模式**（docker-compose.yml 双模式）：
-  - 生产（拉镜像）：`.env` 设 `RESUME_IMAGE=<用户名>/timeline-cv:<版本>` → `docker compose pull && docker compose up -d`；升级 = 改版本号重拉
-  - 开发（本地构建）：`docker compose up -d --build`（RESUME_IMAGE 未设置时自动走本地构建）
+  - 生产（默认）：直接 `docker compose pull && docker compose up -d` —— 镜像默认
+    `cnqsxdy/timeline-cv:latest`；升级 = 改 `.env` 版本号重拉
+  - 开发（本地构建）：`RESUME_IMAGE=yfq-resume:local docker compose up -d --build`
 
 ---
 
 ## 四·D、首次配置：GitHub Actions → Docker Hub 自动构建（一次性，约 5 分钟）
 
+> ✅ **本项目已完成此配置并验证通过（2026-09-15）**，以下为复刻/换账号时的步骤。
+
 1. **Docker Hub**（hub.docker.com）：
-   - 右上角确认你的**用户名**（后续步骤要用）；
-   - 手动创建仓库 `timeline-cv`，设为 **Private**（镜像内含源码，不建议 Public）；
+   - 右上角确认你的**用户名**（本项目为 `cnqsxdy`）；
+   - 仓库 `timeline-cv` 为**自动创建（Public）**；想改 Private 去仓库 Settings 切换（部署方需先 `docker login`）
 2. **生成 Access Token**：Docker Hub → Account Settings → Security → New Access Token，
    权限勾 Read/Write/Delete → 复制生成的 token（只显示一次）；
 3. **GitHub 仓库**（Settings → Secrets and variables → Actions → New repository secret）：
