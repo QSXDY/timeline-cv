@@ -1,5 +1,5 @@
 /* ============================================================
-   yfq-resume 后台样式 · Apple 风
+   timeline-cv 后台样式 · Apple 风
    浅灰底 + 磨砂玻璃侧边栏 + 白卡阴影 + iOS 输入框 + 胶囊按钮
    ============================================================ */
 @import url('https://cdn.xrbk.cn/fonts/MiSans-Regular/result.css');
@@ -96,7 +96,7 @@ details.nav-group summary.nav::after {
 }
 details.nav-group[open] summary.nav::after { transform: translateY(-30%) rotate(-135deg); }
 .admin-side .nav.nav-child {
-  justify-content: flex-start; padding: 9px 14px 9px 30px;
+  justify-content: center; padding: 9px 14px;
   font-size: 13.5px; color: #5a5a5e;
 }
 .side-foot { margin-top: auto; }

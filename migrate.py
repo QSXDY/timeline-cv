@@ -1,8 +1,8 @@
-"""一键迁移：把静态简历的数据导入 yfq-resume 的 SQLite。
+"""一键迁移：把静态简历的数据导入 timeline-cv 的 SQLite。
 
 从上一级目录的 _gen.py 读取数据结构（单一数据源），把 430 张图复制到
 static/uploads/，并按字段写入 resume.db。运行：
-    cd yfq-resume
+    cd timeline-cv
     python migrate.py
 """
 
@@ -23,12 +23,12 @@ from db import DB, get_db, init_db
 
 UPLOADS = os.path.join(BASE, "static", "uploads")
 
-ADMIN_USER = os.environ.get("YFQ_ADMIN_USER", "YFQ")
-ADMIN_PASS = os.environ.get("YFQ_ADMIN_PASS", "")
+ADMIN_USER = os.environ.get("TIMELINE_ADMIN_USER", "admin")
+ADMIN_PASS = os.environ.get("TIMELINE_ADMIN_PASS", "")
 if not ADMIN_PASS:
     ADMIN_PASS = secrets.token_urlsafe(16)
     print(
-        f"[migrate] 未设置 YFQ_ADMIN_PASS 环境变量，已生成随机密码：{ADMIN_PASS}（登录后请立即修改）"
+        f"[migrate] 未设置 TIMELINE_ADMIN_PASS 环境变量，已生成随机密码：{ADMIN_PASS}（登录后请立即修改）"
     )
 
 

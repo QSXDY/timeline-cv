@@ -1,10 +1,10 @@
 # =============================================================================
-# yfq-resume 简历站 · Docker Compose 部署
+# timeline-cv 简历站 · Docker Compose 部署
 # 双模式：
 #   生产模式（默认）：直接拉 Docker Hub 镜像 cnqsxdy/timeline-cv:latest
 #     docker compose pull && docker compose up -d
 #     升级：改 .env 的 RESUME_IMAGE 版本号（或直接拉 latest）重拉即可
-#   开发模式（本地构建）：RESUME_IMAGE=yfq-resume:local docker compose up -d --build
+#   开发模式（本地构建）：RESUME_IMAGE=timeline-cv:local docker compose up -d --build
 # 网络使用 1Panel 默认网络（external），配合 1Panel 反向代理
 # 数据持久化：./data/ 目录（resume.db、secret.key）+ ./data/uploads（图片）
 # 首次启动自动建空库 + 默认管理员 admin/admin（登录后请立即修改）
@@ -13,7 +13,7 @@ services:
   resume:
     image: ${RESUME_IMAGE:-cnqsxdy/timeline-cv:latest}
     build: .
-    container_name: yfq-resume
+    container_name: timeline-cv
     restart: unless-stopped
     # 如需直接访问测试可保留；走 1Panel 反代时也可删除本段
     ports:

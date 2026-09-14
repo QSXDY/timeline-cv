@@ -1,4 +1,4 @@
-/* yfq-resume 后台交互：wangEditor 初始化 + 提交前同步富文本到隐藏 textarea */
+/* timeline-cv 后台交互：wangEditor 初始化 + 提交前同步富文本到隐藏 textarea */
 function initEditor(editorId, textareaId) {
   "use strict";
   var E = window.wangEditor;

@@ -1,4 +1,4 @@
-# yfq-resume 简历站 · 生产镜像（纯净版：不含任何用户数据）
+# timeline-cv 简历站 · 生产镜像（纯净版：不含任何用户数据）
 # 数据（resume.db / uploads / secret.key / logo / backups）由挂载卷提供，
 # 首次启动 app.py 自动建空库 + 默认管理员，拉镜像即全新网站。
 FROM python:3.11-slim

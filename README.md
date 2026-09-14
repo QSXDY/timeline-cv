@@ -1,4 +1,4 @@
-# yfq-resume — 杨芳清个人简历网站（动态版）
+# timeline-cv — 杨芳清个人简历网站（动态版）
 
 把静态简历页（`简历/杨芳清-简历.html`）改造成 **Flask + SQLite** 的动态网站：前台还原原排版，
 后台 `/adminc` 管理全部内容，改完前台即时生效。
@@ -8,7 +8,7 @@
 ## 一、已确认需求（用户拍板，勿再改动）
 
 1. **技术栈**：Python Flask + SQLite，**尽量轻量**（用户明确否了 Next.js/TS/pnpm 路线）
-2. **后台入口**：`/adminc`；账号 `YFQ`，密码 `yfp5201314` —— **PBKDF2 加盐哈希，不存明文**
+2. **后台入口**：`/adminc`；账号 `admin`，密码 `admin` —— **PBKDF2 加盐哈希，不存明文**
 3. **HTML 编辑器**：wangEditor **v4 本地版**（已下载 `static/vendor/wangEditor.min.js`，262KB，UMD 单文件，离线可用，`window.wangEditor`）
 4. **图片目录（v10 起）**：`static/uploads/<分组名>/<项目id>-<项目标题>/`，**项目 id 前缀解耦**——
    改标题/换分组不再迁移项目子目录（分组改名仅重命名分组顶层目录）；数据库只存纯文件名，
@@ -23,7 +23,7 @@
    6. 技能：标题 + 副标题（预留）+ 卡片（左右分栏）标题 + 技术标签增改删
    7. 系统设置：管理员密码修改 + CDN（EdgeOne）配置
 7. **前台排版**：还原现有 `style.css` / `script.js` 的布局 —— 横图行 3 列、竖图行 6 列、单行不混排、图片 `object-fit: cover` 铺满
-8. **项目目录名**：`yfq-resume`（英文名）
+8. **项目目录名**：`timeline-cv`（英文名）
 9. **字体**：全站（前台 + 后台）引用小米 **MiSans**（开源免费商用），CDN `https://cdn.xrbk.cn/fonts/MiSans-{Regular,Medium,Semibold,Bold}/result.css`，`font-family: "MiSans", ...`；正文两端对齐（`text-align: justify; text-justify: inter-ideograph`）
 10. **个人照片（可选）**：后台「基础信息 → 个人照片」上传/删除 1:1 头像，存 `static/uploads/_avatar/`（db `basic_info.avatar` 只存文件名）；前台 hero 右侧条件渲染（有头像才显示，无头像零痕迹）
 11. **系统设置**（第 7 个后台菜单）：管理员密码修改（当前密码校验 + PBKDF2 重存）+ 腾讯 EdgeOne CDN 配置（开关 + 加速域名前缀，开启后前台图片/视频 URL 全部走 CDN，配置存 `settings` 表，运行时缓存）
@@ -35,7 +35,7 @@
 ## 二、目录结构
 
 ```
-yfq-resume/
+timeline-cv/
 ├── README.md                ← 本文件（项目文档 + 进度快照）
 ├── app.py                   ← Flask 主应用（登录/CSRF/六分类CRUD/图片上传/前台渲染）✅
 ├── db.py                    ← SQLite 表结构 + 连接 ✅
@@ -96,9 +96,9 @@ skill_tags     (id, card_id FK CASCADE, name, sort)
 ## 四、环境与运行
 
 - 环境：Windows；Python 3.13.6 位于 `D:\Python\python.exe`；**Flask 3.1.1 已装、Pillow 已装**（无需 pip install）
-- 数据库初始化 + 迁移：`cd yfq-resume && python migrate.py`
-  （会删旧 db、清空 uploads、从上级 `_gen.py` 重新导入；产出 6 分类 / 69 项目 / 430 图 / admin YFQ）
-- 启动（完成后）：`cd yfq-resume && python app.py` → 前台 `http://127.0.0.1:5000`，后台 `http://127.0.0.1:5000/adminc`
+- 数据库初始化 + 迁移：`cd timeline-cv && python migrate.py`
+  （会删旧 db、清空 uploads、从上级 `_gen.py` 重新导入；产出 6 分类 / 69 项目 / 430 图 / admin admin）
+- 启动（完成后）：`cd timeline-cv && python app.py` → 前台 `http://127.0.0.1:5000`，后台 `http://127.0.0.1:5000/adminc`
 - ⚠️ **改了 `templates/` 后必须重启服务**（非 debug 模式下 Jinja 模板有编译缓存，不重启不生效；
   `static/` 静态文件无此问题，刷新即可）
 
@@ -109,7 +109,7 @@ skill_tags     (id, card_id FK CASCADE, name, sort)
 **生产（推荐，拉 Docker Hub 镜像，已打通自动构建）：**
 
 ```bash
-cd yfq-resume
+cd timeline-cv
 cp .env.example .env        # 可选：想固定版本就改 RESUME_IMAGE=cnqsxdy/timeline-cv:1.0.0
 docker compose pull
 docker compose up -d
@@ -118,7 +118,7 @@ docker compose up -d
 **开发（本地构建）：**
 
 ```bash
-RESUME_IMAGE=yfq-resume:local docker compose up -d --build
+RESUME_IMAGE=timeline-cv:local docker compose up -d --build
 ```
 
 - **镜像**：`cnqsxdy/timeline-cv:latest`（Docker Hub，amd64 + arm64 双架构；
@@ -127,16 +127,16 @@ RESUME_IMAGE=yfq-resume:local docker compose up -d --build
 - **纯净镜像（不含任何用户数据）**：`.dockerignore` 已排除 `resume.db`、`secret.key`、
   `static/uploads/`、`backups/`、`logo`；**把镜像分享给别人 = 全新空站**
   （别人拉镜像、`docker compose up` 后首次启动自动建空库 + 默认管理员 **admin / admin**，
-  登录后请在系统设置中改密码；也可用环境变量 `YFQ_ADMIN_USER` / `YFQ_ADMIN_PASS` 覆盖默认值）
+  登录后请在系统设置中改密码；也可用环境变量 `TIMELINE_ADMIN_USER` / `TIMELINE_ADMIN_PASS` 覆盖默认值）
 - **忘记管理员密码**（shell 特权操作，仅服务器管理员可执行；前台无重置入口）：
   - 本地：`python app.py --reset-admin`（重置为 admin/admin）或 `python app.py --reset-admin 新密码`
-  - Docker：`docker exec -it yfq-resume python app.py --reset-admin 新密码`（只改密码哈希，数据不动）
+  - Docker：`docker exec -it timeline-cv python app.py --reset-admin 新密码`（只改密码哈希，数据不动）
 - 你自己的部署：`./data/` 挂载卷里有 `resume.db` 就直接用（不会被覆盖），没有则自动建空库
 - 数据持久化在宿主机 `./data/` 目录：`resume.db` + `secret.key` 在 `./data/`，
   上传图片在 `./data/uploads/`（与镜像分离，1Panel 文件管理可直接看到/备份）
 - **全站 LOGO**：前台顶栏 / 后台侧边栏 / 登录页共用 `static/logo.webp`（镜像内置中性默认占位 logo）；
   把新 LOGO 放到 `./data/logo.png` 或 `./data/logo.webp`（`./data` 已整体挂载），
-  放 png 会自动转 webp，`docker restart yfq-resume` 即生效。
+  放 png 会自动转 webp，`docker restart timeline-cv` 即生效。
   ⚠️ 不要单独 bind mount 单文件（Docker 会把不存在的宿主文件建成目录导致启动失败）
 - 数据库路径由环境变量覆盖（`RESUME_DB=/app/data/resume.db`、`SECRET_KEY_FILE=/app/data/secret.key`），
   **不要**直接 bind mount 单文件（Docker 会把不存在的宿主文件建成目录导致启动失败）
@@ -171,7 +171,7 @@ python -c "import app; c = app.app.test_client(); print('首页:', c.get('/').st
 - **体检基线（2026-09-15）**：ruff check **0 项**（All checks passed）、ruff format 3 文件已统一格式化；
   豁免规则见 `ruff.toml`（BLE001/S110 防御性宽异常、DTZ005 本地单机无时区——均为有意设计，非遗留问题）；
   bandit **0 高危 0 中危**（4 项低危 try-except-pass 防御代码）；pip-audit **No known vulnerabilities**；冒烟 200/200
-- 已修复项：`migrate.py` 明文密码 → 读 `YFQ_ADMIN_PASS` 环境变量（缺失自动生成随机密码并打印）；
+- 已修复项：`migrate.py` 明文密码 → 读 `TIMELINE_ADMIN_PASS` 环境变量（缺失自动生成随机密码并打印）；
   `app.py` 备份文件 `open()` 泄漏 → `with` 上下文；全量 `%` 格式化 → f-string、import 排序、
   dict 推导等 15 项自动修复 + 3 文件统一格式化
 
@@ -180,7 +180,7 @@ python -c "import app; c = app.app.test_client(); print('首页:', c.get('/').st
 - **两种部署模式**（docker-compose.yml 双模式）：
   - 生产（默认）：直接 `docker compose pull && docker compose up -d` —— 镜像默认
     `cnqsxdy/timeline-cv:latest`；升级 = 改 `.env` 版本号重拉
-  - 开发（本地构建）：`RESUME_IMAGE=yfq-resume:local docker compose up -d --build`
+  - 开发（本地构建）：`RESUME_IMAGE=timeline-cv:local docker compose up -d --build`
 
 ---
 

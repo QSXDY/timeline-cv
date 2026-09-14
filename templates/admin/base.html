@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}后台管理{% endblock %} · 杨芳清简历</title>
 <link rel="icon" href="{{ url_for('static', filename='logo.webp') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v=20260915m">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v=20260915n">
 </head>
 <body>
 <div class="admin-wrap">
@@ -38,7 +38,7 @@
         <input type="hidden" name="_csrf" value="{{ session.csrf }}">
         <button class="logout" type="submit">退出登录</button>
       </form>
-      <div class="side-meta">yfq-resume · Flask + SQLite</div>
+      <div class="side-meta">timeline-cv · Flask + SQLite</div>
     </div>
   </aside>
   <div class="admin-main">
@@ -52,7 +52,7 @@
     {% block content %}{% endblock %}
   </div>
 </div>
-<script src="{{ url_for('static', filename='js/admin.js') }}?v=20260915m"></script>
+<script src="{{ url_for('static', filename='js/admin.js') }}?v=20260915n"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

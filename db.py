@@ -1,4 +1,4 @@
-"""SQLite schema for yfq-resume."""
+"""SQLite schema for timeline-cv."""
 
 import os
 import sqlite3

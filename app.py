@@ -1,4 +1,4 @@
-"""yfq-resume: Flask + SQLite 个人简历站（前台 + 后台 /adminc）。
+"""timeline-cv: Flask + SQLite 个人简历站（前台 + 后台 /adminc）。
 
 启动：python app.py  →  前台 http://127.0.0.1:5000  后台 /adminc
 """
@@ -131,7 +131,7 @@ def _ensure_first_run():
     """首次启动自举（幂等，可重复调用）：
     - 确保上传目录存在（干净镜像无 static/uploads）
     - 建空库（无 resume.db 时自动建全表）
-    - admin 表为空时创建默认管理员 admin/admin（可用 YFQ_ADMIN_USER / YFQ_ADMIN_PASS
+    - admin 表为空时创建默认管理员 admin/admin（可用 TIMELINE_ADMIN_USER / TIMELINE_ADMIN_PASS
       环境变量覆盖），登录后请在系统设置中立即修改密码。已有数据的库不受影响。"""
     os.makedirs(UPLOADS, exist_ok=True)
     db.init_db()
@@ -139,8 +139,8 @@ def _ensure_first_run():
         conn = db.get_db()
         n = conn.execute("SELECT COUNT(*) FROM admin").fetchone()[0]
         if n == 0:
-            user = os.environ.get("YFQ_ADMIN_USER", "admin")
-            pw = os.environ.get("YFQ_ADMIN_PASS", "admin")
+            user = os.environ.get("TIMELINE_ADMIN_USER", "admin")
+            pw = os.environ.get("TIMELINE_ADMIN_PASS", "admin")
             conn.execute(
                 "INSERT INTO admin (id, username, password_hash) VALUES (1, ?, ?)",
                 (user, hash_password(pw)),
