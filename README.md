@@ -127,6 +127,36 @@ docker compose up -d --build
 
 ---
 
+## 四·C、代码体检（部署前必跑）
+
+项目根目录依次执行（Windows 下用 `D:\Python\python.exe`）：
+
+```bash
+# 1. 代码规范 + 可疑代码（ruff，风格类问题）
+python -m ruff check app.py db.py migrate.py
+python -m ruff format --check app.py db.py migrate.py
+
+# 2. 安全漏洞扫描（bandit：SQL 注入/路径穿越/硬编码密码等）
+python -m bandit -r app.py db.py migrate.py
+
+# 3. 依赖漏洞审计（pip-audit：查询已知 CVE）
+python -m pip_audit -r requirements.txt
+
+# 4. 功能冒烟（Flask test client，应输出 200 / 200）
+python -c "import app; c = app.app.test_client(); print('首页:', c.get('/').status_code, '| 登录页:', c.get('/adminc/login').status_code)"
+```
+
+- 工具安装：`python -m pip install ruff bandit pip-audit`
+- ⚠️ **本机 Python 的 `--user` site 不在 sys.path**，pip-audit 等纯 Python 工具须装到系统目录（不带 `--user`），否则 `ModuleNotFoundError`
+- **体检基线（2026-09-15）**：ruff check **0 项**（All checks passed）、ruff format 3 文件已统一格式化；
+  豁免规则见 `ruff.toml`（BLE001/S110 防御性宽异常、DTZ005 本地单机无时区——均为有意设计，非遗留问题）；
+  bandit **0 高危 0 中危**（4 项低危 try-except-pass 防御代码）；pip-audit **No known vulnerabilities**；冒烟 200/200
+- 已修复项：`migrate.py` 明文密码 → 读 `YFQ_ADMIN_PASS` 环境变量（缺失自动生成随机密码并打印）；
+  `app.py` 备份文件 `open()` 泄漏 → `with` 上下文；全量 `%` 格式化 → f-string、import 排序、
+  dict 推导等 15 项自动修复 + 3 文件统一格式化
+
+---
+
 ## 五、当前进度（快照：2026-09-13 · 全部完成）
 
 - [x] 目录结构创建

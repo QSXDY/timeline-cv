@@ -1,0 +1,11 @@
+# ruff 配置：部署前体检基线（2026-09-15）
+# 规则豁免均为有意设计，非遗留问题：
+#   BLE001 / S110 —— 防御性宽异常捕获：读 settings 失败静默回退、PIL 图片损坏检测
+#                    （可能抛 OSError/EOFError/UnicodeDecodeError 多种）、
+#                    数据库旧库兼容迁移。收紧为精确异常反而会漏兜底。
+#   DTZ005        —— 本地单机应用（无多时区），datetime.now() 无需 tz 参数。
+[lint]
+ignore = ["BLE001", "S110", "DTZ005"]
+
+[format]
+quote-style = "double"

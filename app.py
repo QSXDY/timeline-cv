@@ -1,19 +1,27 @@
-# -*- coding: utf-8 -*-
 """yfq-resume: Flask + SQLite 个人简历站（前台 + 后台 /adminc）。
 
 启动：python app.py  →  前台 http://127.0.0.1:5000  后台 /adminc
 """
+
+import datetime
 import hashlib
 import os
 import re
 import secrets
 import shutil
 import uuid
-import datetime
 from functools import wraps
 
-from flask import (Flask, abort, flash, redirect, render_template, request,
-                   session, url_for)
+from flask import (
+    Flask,
+    abort,
+    flash,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from PIL import Image
 
 import db
@@ -77,11 +85,13 @@ def slug_dir(name):
 
 def project_dir(cat_name, pid, proj_title):
     """项目目录：uploads/<分组slug>/<项目id>-<标题slug>/（id 前缀解耦标题与文件系统，改标题不迁移目录）"""
-    return os.path.join(UPLOADS, slug_dir(cat_name), "%d-%s" % (pid, slug_dir(proj_title)))
+    return os.path.join(UPLOADS, slug_dir(cat_name), f"{pid}-{slug_dir(proj_title)}")
 
 
 def img_url(cat_name, pid, proj_title, filename):
-    path = "uploads/%s/%s/%s" % (slug_dir(cat_name), "%d-%s" % (pid, slug_dir(proj_title)), filename)
+    path = "uploads/{}/{}/{}".format(
+        slug_dir(cat_name), f"{pid}-{slug_dir(proj_title)}", filename
+    )
     local = url_for("static", filename=path)
     _load_cdn_cfg()
     if _cdn_cfg["enabled"] and _cdn_cfg["base"]:
@@ -100,7 +110,7 @@ def _load_cdn_cfg():
         conn = db.get_db()
         rows = conn.execute("SELECT key, value FROM settings").fetchall()
         conn.close()
-        kv = dict((r["key"], r["value"]) for r in rows)
+        kv = {r["key"]: r["value"] for r in rows}
         _cdn_cfg["enabled"] = kv.get("cdn_enabled") == "1"
         _cdn_cfg["base"] = (kv.get("cdn_base") or "").strip().rstrip("/")
     except Exception:
@@ -110,9 +120,10 @@ def _load_cdn_cfg():
 
 def hash_password(password, iterations=260000):
     salt = secrets.token_hex(16)
-    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"),
-                                 bytes.fromhex(salt), iterations).hex()
-    return "pbkdf2_sha256$%d$%s$%s" % (iterations, salt, digest)
+    digest = hashlib.pbkdf2_hmac(
+        "sha256", password.encode("utf-8"), bytes.fromhex(salt), iterations
+    ).hex()
+    return f"pbkdf2_sha256${iterations}${salt}${digest}"
 
 
 def _save_webp(im, path, quality=100):
@@ -127,8 +138,9 @@ def verify_password(password, stored):
         algo, iters, salt, digest = stored.split("$")
         if algo != "pbkdf2_sha256":
             return False
-        calc = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"),
-                                   bytes.fromhex(salt), int(iters)).hex()
+        calc = hashlib.pbkdf2_hmac(
+            "sha256", password.encode("utf-8"), bytes.fromhex(salt), int(iters)
+        ).hex()
         return secrets.compare_digest(calc, digest)
     except Exception:
         return False
@@ -140,6 +152,7 @@ def login_required(f):
         if not session.get("admin"):
             return redirect(url_for("admin_login"))
         return f(*a, **k)
+
     return w
 
 
@@ -174,7 +187,11 @@ def _clean_editor_orphans(conn, detail_html):
         return
     refs = set()
     for row in conn.execute("SELECT detail_html FROM projects").fetchall():
-        refs.update(re.findall(r"uploads/_editor/([0-9a-f]{12,}\.webp)", row["detail_html"] or ""))
+        refs.update(
+            re.findall(
+                r"uploads/_editor/([0-9a-f]{12,}\.webp)", row["detail_html"] or ""
+            )
+        )
     for n in names - refs:
         fp = os.path.join(UPLOADS, "_editor", n)
         if os.path.exists(fp):
@@ -197,11 +214,14 @@ def _auto_backup():
         if not os.path.exists(src):
             return
         import shutil as _sh
-        dst = os.path.join(backup_dir, "resume-%s.db" % today)
+
+        dst = os.path.join(backup_dir, f"resume-{today}.db")
         _sh.copy2(src, dst)
-        open(marker, "w", encoding="utf-8").write("1")
+        with open(marker, "w", encoding="utf-8") as _f:
+            _f.write("1")
         # 清理 7 天前的备份
         import glob
+
         olds = sorted(glob.glob(os.path.join(backup_dir, "resume-*.db")))[:-7]
         for f in olds:
             try:
@@ -213,8 +233,13 @@ def _auto_backup():
         print("[backup] skip:", e)
 
 
-_SEC_ANCHOR = {"basic": "top", "summary": "summary", "projects": "projects",
-               "experience": "exp", "skills": "skill"}
+_SEC_ANCHOR = {
+    "basic": "top",
+    "summary": "summary",
+    "projects": "projects",
+    "experience": "exp",
+    "skills": "skill",
+}
 
 
 @app.context_processor
@@ -224,7 +249,7 @@ def inject_sections():
         conn = db.get_db()
         rows = conn.execute("SELECT * FROM sections ORDER BY sort, key").fetchall()
         conn.close()
-        sec = dict((r["key"], r) for r in rows)
+        sec = {r["key"]: r for r in rows}
         nav_items = []
         for r in rows:
             item = dict(r)
@@ -277,38 +302,67 @@ def load_site_data():
     summary = conn.execute("SELECT * FROM summary WHERE id=1").fetchone()
     cards = conn.execute("SELECT * FROM summary_cards ORDER BY sort, id").fetchall()
     classifications = []
-    for cl in conn.execute("SELECT * FROM classifications ORDER BY sort, id").fetchall():
+    for cl in conn.execute(
+        "SELECT * FROM classifications ORDER BY sort, id"
+    ).fetchall():
         d = dict(cl)
         d["groups"] = []
         for cat in conn.execute(
-                "SELECT * FROM categories WHERE classification_id=? ORDER BY sort, id", (cl["id"],)).fetchall():
+            "SELECT * FROM categories WHERE classification_id=? ORDER BY sort, id",
+            (cl["id"],),
+        ).fetchall():
             g = dict(cat)
-            g["projects"] = [dict(p) for p in conn.execute(
-                "SELECT * FROM projects WHERE category_id=? ORDER BY pub_date DESC, sort, id DESC", (cat["id"],)).fetchall()]
+            g["projects"] = [
+                dict(p)
+                for p in conn.execute(
+                    "SELECT * FROM projects WHERE category_id=? ORDER BY pub_date DESC, sort, id DESC",
+                    (cat["id"],),
+                ).fetchall()
+            ]
             for p in g["projects"]:
-                p["images"] = [dict(i) for i in conn.execute(
-                    "SELECT * FROM images WHERE project_id=? ORDER BY sort, id", (p["id"],)).fetchall()]
+                p["images"] = [
+                    dict(i)
+                    for i in conn.execute(
+                        "SELECT * FROM images WHERE project_id=? ORDER BY sort, id",
+                        (p["id"],),
+                    ).fetchall()
+                ]
                 p["n"] = len(p["images"])
             d["groups"].append(g)
         classifications.append(d)
-    exps = [dict(e) for e in conn.execute("SELECT * FROM experiences ORDER BY sort, id").fetchall()]
+    exps = [
+        dict(e)
+        for e in conn.execute("SELECT * FROM experiences ORDER BY sort, id").fetchall()
+    ]
     skills = conn.execute("SELECT * FROM skills WHERE id=1").fetchone()
-    skill_cards = [dict(c) for c in conn.execute("SELECT * FROM skill_cards ORDER BY sort, id").fetchall()]
+    skill_cards = [
+        dict(c)
+        for c in conn.execute("SELECT * FROM skill_cards ORDER BY sort, id").fetchall()
+    ]
     for c in skill_cards:
-        c["tags"] = [dict(t) for t in conn.execute(
-            "SELECT * FROM skill_tags WHERE card_id=? ORDER BY sort, id", (c["id"],)).fetchall()]
+        c["tags"] = [
+            dict(t)
+            for t in conn.execute(
+                "SELECT * FROM skill_tags WHERE card_id=? ORDER BY sort, id", (c["id"],)
+            ).fetchall()
+        ]
     conn.close()
-    return (info, summary, cards, classifications,
-            exps, skills, skill_cards)
+    return (info, summary, cards, classifications, exps, skills, skill_cards)
 
 
 @app.get("/")
 def index():
     data = load_site_data()
-    return render_template("index.html",
-                           info=data[0], summary=data[1], cards=data[2],
-                           classifications=data[3],
-                           exps=data[4], skills=data[5], skill_cards=data[6])
+    return render_template(
+        "index.html",
+        info=data[0],
+        summary=data[1],
+        cards=data[2],
+        classifications=data[3],
+        exps=data[4],
+        skills=data[5],
+        skill_cards=data[6],
+    )
 
 
 # ---------------------------------------------------------------- 登录
@@ -319,6 +373,7 @@ def admin_login():
     if request.method == "POST":
         # 轻量限速：5 次失败锁定 15 分钟（基于 session）
         import time as _t
+
         now = _t.time()
         if session.get("lock_until") and now < session.get("lock_until", 0):
             flash("尝试次数过多，请 15 分钟后再试")
@@ -373,11 +428,22 @@ def admin_basic():
                 conn.commit()
                 flash("头像已删除")
             return redirect(url_for("admin_basic"))
-        fields = ["name", "role", "lead", "intent", "salary", "location", "email", "profile"]
+        fields = [
+            "name",
+            "role",
+            "lead",
+            "intent",
+            "salary",
+            "location",
+            "email",
+            "profile",
+        ]
         vals = {k: request.form.get(k, "").strip() for k in fields}
-        conn.execute("""UPDATE basic_info SET name=?, role=?, lead=?, intent=?,
+        conn.execute(
+            """UPDATE basic_info SET name=?, role=?, lead=?, intent=?,
                         salary=?, location=?, email=?, profile=? WHERE id=1""",
-                     tuple(vals[k] for k in fields))
+            tuple(vals[k] for k in fields),
+        )
         f = request.files.get("avatar")
         if f and f.filename:
             ext = f.filename.rsplit(".", 1)[-1].lower() if "." in f.filename else ""
@@ -424,15 +490,22 @@ def admin_summary():
             ti = request.form.get("title", "").strip()
             sub = request.form.get("subtitle", "").strip()
             conn.execute("UPDATE summary SET title=?, subtitle=? WHERE id=1", (ti, sub))
-            conn.execute("UPDATE sections SET title=?, subtitle=? WHERE key='summary'", (ti, sub))
+            conn.execute(
+                "UPDATE sections SET title=?, subtitle=? WHERE key='summary'", (ti, sub)
+            )
             conn.commit()
             flash("概要已保存")
         elif action == "add_card":
             t = request.form.get("title", "").strip()
             c = request.form.get("content", "").strip()
             if t and c:
-                m = conn.execute("SELECT COALESCE(MAX(sort), -1) m FROM summary_cards").fetchone()["m"]
-                conn.execute("INSERT INTO summary_cards (title, content, sort) VALUES (?, ?, ?)", (t, c, m + 1))
+                m = conn.execute(
+                    "SELECT COALESCE(MAX(sort), -1) m FROM summary_cards"
+                ).fetchone()["m"]
+                conn.execute(
+                    "INSERT INTO summary_cards (title, content, sort) VALUES (?, ?, ?)",
+                    (t, c, m + 1),
+                )
                 conn.commit()
                 flash("卡片已添加")
             else:
@@ -469,26 +542,34 @@ def admin_classifications():
             if not name:
                 flash("分类名不能为空")
             else:
-                others = conn.execute("SELECT id, name FROM classifications WHERE id != ?",
-                                      (cid or 0,)).fetchall()
+                others = conn.execute(
+                    "SELECT id, name FROM classifications WHERE id != ?", (cid or 0,)
+                ).fetchall()
                 if any(o["name"] == name for o in others):
                     flash("分类名已存在，请换一个")
                 elif cid:
-                    conn.execute("UPDATE classifications SET name=?, sort=? WHERE id=?",
-                                 (name, sort, cid))
+                    conn.execute(
+                        "UPDATE classifications SET name=?, sort=? WHERE id=?",
+                        (name, sort, cid),
+                    )
                     flash("分类已保存")
                 else:
-                    conn.execute("INSERT INTO classifications (name, sort) VALUES (?, ?)",
-                                 (name, sort))
+                    conn.execute(
+                        "INSERT INTO classifications (name, sort) VALUES (?, ?)",
+                        (name, sort),
+                    )
                     flash("分类已添加")
             conn.commit()
         elif action == "delete":
             cid = request.form.get("id", type=int)
             # 级联删除：先删该分类下每个分组的磁盘目录，再删分组（外键级联项目/图片），最后删分类
             for cat in conn.execute(
-                    "SELECT * FROM categories WHERE classification_id=?", (cid,)).fetchall():
+                "SELECT * FROM categories WHERE classification_id=?", (cid,)
+            ).fetchall():
                 for p in conn.execute(
-                        "SELECT id, title, detail_html FROM projects WHERE category_id=?", (cat["id"],)).fetchall():
+                    "SELECT id, title, detail_html FROM projects WHERE category_id=?",
+                    (cat["id"],),
+                ).fetchall():
                     _clean_editor_orphans(conn, p["detail_html"])
                     d = project_dir(cat["name"], p["id"], p["title"])
                     if os.path.isdir(d):
@@ -500,18 +581,29 @@ def admin_classifications():
         elif action == "section_title":
             ti = request.form.get("title", "").strip()
             sub = request.form.get("subtitle", "").strip()
-            conn.execute("UPDATE sections SET title=?, subtitle=? WHERE key='projects'", (ti, sub))
+            conn.execute(
+                "UPDATE sections SET title=?, subtitle=? WHERE key='projects'",
+                (ti, sub),
+            )
             conn.commit()
             flash("精选项目区标题已保存")
-        for i, r in enumerate(conn.execute(
-                "SELECT id FROM classifications ORDER BY sort, id").fetchall(), 1):
+        for i, r in enumerate(
+            conn.execute("SELECT id FROM classifications ORDER BY sort, id").fetchall(),
+            1,
+        ):
             conn.execute("UPDATE classifications SET sort=? WHERE id=?", (i, r["id"]))
         conn.commit()
         return redirect(url_for("admin_classifications"))
-    cls = [dict(c) for c in conn.execute("SELECT * FROM classifications ORDER BY sort, id").fetchall()]
+    cls = [
+        dict(c)
+        for c in conn.execute(
+            "SELECT * FROM classifications ORDER BY sort, id"
+        ).fetchall()
+    ]
     for c in cls:
-        c["n"] = conn.execute("SELECT COUNT(*) n FROM categories WHERE classification_id=?",
-                              (c["id"],)).fetchone()["n"]
+        c["n"] = conn.execute(
+            "SELECT COUNT(*) n FROM categories WHERE classification_id=?", (c["id"],)
+        ).fetchone()["n"]
     psec = conn.execute("SELECT * FROM sections WHERE key='projects'").fetchone()
     conn.close()
     return render_template("admin/classifications.html", cls=cls, psec=psec)
@@ -533,43 +625,61 @@ def admin_categories():
             sort = request.form.get("sort", type=int) or 0
             if not name:
                 flash("分组名不能为空")
-            elif classification_id and not conn.execute(
-                    "SELECT id FROM classifications WHERE id=?", (classification_id,)).fetchone():
+            elif (
+                classification_id
+                and not conn.execute(
+                    "SELECT id FROM classifications WHERE id=?", (classification_id,)
+                ).fetchone()
+            ):
                 flash("所属分类不存在")
             else:
-                others = conn.execute("SELECT id, name FROM categories WHERE id != ?", (cid or 0,)).fetchall()
+                others = conn.execute(
+                    "SELECT id, name FROM categories WHERE id != ?", (cid or 0,)
+                ).fetchall()
                 if any(slug_dir(o["name"]) == slug_dir(name) for o in others):
                     flash("分组名与已有分组冲突，请换一个")
                 elif cid:
-                    old = conn.execute("SELECT * FROM categories WHERE id=?", (cid,)).fetchone()
+                    old = conn.execute(
+                        "SELECT * FROM categories WHERE id=?", (cid,)
+                    ).fetchone()
                     if old and old["name"] != name:
                         o = os.path.join(UPLOADS, slug_dir(old["name"]))
                         n = os.path.join(UPLOADS, slug_dir(name))
                         if os.path.exists(o):
                             if o != n and os.path.exists(n):
-                                flash("目标目录已存在，无法改名"); conn.close()
+                                flash("目标目录已存在，无法改名")
+                                conn.close()
                                 return redirect(url_for("admin_categories"))
                             if o != n:
                                 os.rename(o, n)
-                    conn.execute("""UPDATE categories SET name=?, subtitle=?, tags=?,
+                    conn.execute(
+                        """UPDATE categories SET name=?, subtitle=?, tags=?,
                                     classification_id=?, sort=? WHERE id=?""",
-                                 (name, subtitle, tags, classification_id, sort, cid))
+                        (name, subtitle, tags, classification_id, sort, cid),
+                    )
                     flash("分组已保存")
                 else:
-                    conn.execute("""INSERT INTO categories (name, subtitle, tags, classification_id, sort)
+                    conn.execute(
+                        """INSERT INTO categories (name, subtitle, tags, classification_id, sort)
                                     VALUES (?, ?, ?, ?, ?)""",
-                                 (name, subtitle, tags, classification_id, sort))
+                        (name, subtitle, tags, classification_id, sort),
+                    )
                     flash("分组已添加")
             conn.commit()
-            for i, r in enumerate(conn.execute(
-                    "SELECT id FROM categories ORDER BY sort, id").fetchall(), 1):
+            for i, r in enumerate(
+                conn.execute("SELECT id FROM categories ORDER BY sort, id").fetchall(),
+                1,
+            ):
                 conn.execute("UPDATE categories SET sort=? WHERE id=?", (i, r["id"]))
             conn.commit()
         elif action == "delete":
             cid = request.form.get("id", type=int)
             cat = conn.execute("SELECT * FROM categories WHERE id=?", (cid,)).fetchone()
             if cat:
-                for p in conn.execute("SELECT id, title, detail_html FROM projects WHERE category_id=?", (cid,)).fetchall():
+                for p in conn.execute(
+                    "SELECT id, title, detail_html FROM projects WHERE category_id=?",
+                    (cid,),
+                ).fetchall():
                     _clean_editor_orphans(conn, p["detail_html"])
                     d = project_dir(cat["name"], p["id"], p["title"])
                     if os.path.isdir(d):
@@ -578,14 +688,25 @@ def admin_categories():
                 conn.commit()
                 flash("分类已删除（含全部项目与图片）")
         return redirect(url_for("admin_categories"))
-    cats = [dict(c) for c in conn.execute("SELECT * FROM categories ORDER BY sort, id").fetchall()]
-    clmap = dict((r["id"], r["name"]) for r in conn.execute(
-        "SELECT id, name FROM classifications").fetchall())
+    cats = [
+        dict(c)
+        for c in conn.execute("SELECT * FROM categories ORDER BY sort, id").fetchall()
+    ]
+    clmap = {
+        r["id"]: r["name"]
+        for r in conn.execute("SELECT id, name FROM classifications").fetchall()
+    }
     for c in cats:
-        c["n"] = conn.execute("SELECT COUNT(*) n FROM projects WHERE category_id=?",
-                              (c["id"],)).fetchone()["n"]
+        c["n"] = conn.execute(
+            "SELECT COUNT(*) n FROM projects WHERE category_id=?", (c["id"],)
+        ).fetchone()["n"]
         c["cl_name"] = clmap.get(c["classification_id"], "未归属")
-    cls = [dict(r) for r in conn.execute("SELECT * FROM classifications ORDER BY sort, id").fetchall()]
+    cls = [
+        dict(r)
+        for r in conn.execute(
+            "SELECT * FROM classifications ORDER BY sort, id"
+        ).fetchall()
+    ]
     conn.close()
     return render_template("admin/categories.html", cats=cats, cls=cls)
 
@@ -604,27 +725,46 @@ def admin_projects():
                 flash("分类不存在")
             else:
                 today = datetime.datetime.now().strftime("%Y-%m-%d 12:00")
-                conn.execute("INSERT INTO projects (category_id, title, desc, detail_html, pub_date, sort) VALUES (?, ?, '', '', ?, 255)",
-                             (cid, title, today))
+                conn.execute(
+                    "INSERT INTO projects (category_id, title, desc, detail_html, pub_date, sort) VALUES (?, ?, '', '', ?, 255)",
+                    (cid, title, today),
+                )
                 conn.commit()
                 pid = conn.execute("SELECT last_insert_rowid() id").fetchone()["id"]
                 conn.close()
                 return redirect(url_for("admin_project_edit", pid=pid))
         flash("请选择分类并填写项目标题")
         return redirect(url_for("admin_projects"))
-    cls = [dict(r) for r in conn.execute("SELECT * FROM classifications ORDER BY sort, id").fetchall()]
+    cls = [
+        dict(r)
+        for r in conn.execute(
+            "SELECT * FROM classifications ORDER BY sort, id"
+        ).fetchall()
+    ]
     for cl in cls:
-        cl["groups"] = [dict(r) for r in conn.execute(
-            "SELECT * FROM categories WHERE classification_id=? ORDER BY sort, id", (cl["id"],)).fetchall()]
+        cl["groups"] = [
+            dict(r)
+            for r in conn.execute(
+                "SELECT * FROM categories WHERE classification_id=? ORDER BY sort, id",
+                (cl["id"],),
+            ).fetchall()
+        ]
     clid = request.args.get("classification_id", type=int)
     cid = request.args.get("category_id", type=int)
     projs = []
     if cid:
-        projs = [dict(p) for p in conn.execute(
-            "SELECT p.*, (SELECT COUNT(*) FROM images i WHERE i.project_id=p.id) n "
-            "FROM projects p WHERE category_id=? ORDER BY p.pub_date DESC, p.sort, p.id DESC", (cid,)).fetchall()]
+        projs = [
+            dict(p)
+            for p in conn.execute(
+                "SELECT p.*, (SELECT COUNT(*) FROM images i WHERE i.project_id=p.id) n "
+                "FROM projects p WHERE category_id=? ORDER BY p.pub_date DESC, p.sort, p.id DESC",
+                (cid,),
+            ).fetchall()
+        ]
     conn.close()
-    return render_template("admin/projects.html", cls=cls, clid=clid, cid=cid, projs=projs)
+    return render_template(
+        "admin/projects.html", cls=cls, clid=clid, cid=cid, projs=projs
+    )
 
 
 @app.route("/adminc/projects/<int:pid>/edit", methods=["GET", "POST"])
@@ -634,7 +774,9 @@ def admin_project_edit(pid):
     proj = conn.execute("SELECT * FROM projects WHERE id=?", (pid,)).fetchone()
     if not proj:
         abort(404)
-    cat = conn.execute("SELECT * FROM categories WHERE id=?", (proj["category_id"],)).fetchone()
+    cat = conn.execute(
+        "SELECT * FROM categories WHERE id=?", (proj["category_id"],)
+    ).fetchone()
     if request.method == "POST":
         action = request.form.get("action", "save")
         if action == "save":
@@ -646,19 +788,26 @@ def admin_project_edit(pid):
             if sort is None:
                 sort = 255
             cid = request.form.get("category_id", type=int)
-            new_cat = conn.execute("SELECT * FROM categories WHERE id=?", (cid,)).fetchone()
+            new_cat = conn.execute(
+                "SELECT * FROM categories WHERE id=?", (cid,)
+            ).fetchone()
             if not title or not new_cat:
                 flash("标题和分类不能为空")
             else:
-                others = conn.execute("SELECT id, title FROM projects WHERE category_id=? AND id != ?",
-                                      (new_cat["id"], pid)).fetchall()
+                others = conn.execute(
+                    "SELECT id, title FROM projects WHERE category_id=? AND id != ?",
+                    (new_cat["id"], pid),
+                ).fetchall()
                 if any(slug_dir(o["title"]) == slug_dir(title) for o in others):
                     flash("同一分类下已有同名项目，请换一个")
                 else:
                     try:
                         # 目录与标题解耦（id 前缀），改标题/分组不再迁移磁盘目录
-                        conn.execute("""UPDATE projects SET category_id=?, title=?, desc=?, detail_html=?, pub_date=?, sort=?
-                                        WHERE id=?""", (new_cat["id"], title, desc, detail, pub, sort, pid))
+                        conn.execute(
+                            """UPDATE projects SET category_id=?, title=?, desc=?, detail_html=?, pub_date=?, sort=?
+                                        WHERE id=?""",
+                            (new_cat["id"], title, desc, detail, pub, sort, pid),
+                        )
                         conn.commit()
                         flash("项目已保存")
                         return redirect(url_for("admin_project_edit", pid=pid))
@@ -676,19 +825,41 @@ def admin_project_edit(pid):
             return redirect(url_for("admin_projects"))
     # GET: 重新加载（保存后可能换了分类）
     proj = conn.execute("SELECT * FROM projects WHERE id=?", (pid,)).fetchone()
-    cat = conn.execute("SELECT * FROM categories WHERE id=?", (proj["category_id"],)).fetchone()
-    images = [dict(i) for i in conn.execute("SELECT * FROM images WHERE project_id=? ORDER BY sort, id",
-                                            (pid,)).fetchall()]
-    cls = [dict(r) for r in conn.execute("SELECT * FROM classifications ORDER BY sort, id").fetchall()]
+    cat = conn.execute(
+        "SELECT * FROM categories WHERE id=?", (proj["category_id"],)
+    ).fetchone()
+    images = [
+        dict(i)
+        for i in conn.execute(
+            "SELECT * FROM images WHERE project_id=? ORDER BY sort, id", (pid,)
+        ).fetchall()
+    ]
+    cls = [
+        dict(r)
+        for r in conn.execute(
+            "SELECT * FROM classifications ORDER BY sort, id"
+        ).fetchall()
+    ]
     for cl in cls:
-        cl["groups"] = [dict(r) for r in conn.execute(
-            "SELECT * FROM categories WHERE classification_id=? ORDER BY sort, id", (cl["id"],)).fetchall()]
+        cl["groups"] = [
+            dict(r)
+            for r in conn.execute(
+                "SELECT * FROM categories WHERE classification_id=? ORDER BY sort, id",
+                (cl["id"],),
+            ).fetchall()
+        ]
     conn.close()
     land = [i for i in images if i["orientation"] == "h"]
     port = [i for i in images if i["orientation"] == "v"]
-    return render_template("admin/project_edit.html", proj=proj, cat=cat, cls=cls,
-                           cl_id=cat["classification_id"] if cat else 0,
-                           land=land, port=port)
+    return render_template(
+        "admin/project_edit.html",
+        proj=proj,
+        cat=cat,
+        cls=cls,
+        cl_id=cat["classification_id"] if cat else 0,
+        land=land,
+        port=port,
+    )
 
 
 @app.post("/adminc/projects/<int:pid>/images")
@@ -699,7 +870,9 @@ def upload_image(pid):
     if not proj:
         conn.close()
         abort(404)
-    cat = conn.execute("SELECT * FROM categories WHERE id=?", (proj["category_id"],)).fetchone()
+    cat = conn.execute(
+        "SELECT * FROM categories WHERE id=?", (proj["category_id"],)
+    ).fetchone()
     f = request.files.get("file")
     orientation = request.form.get("orientation", "h")
     caption = request.form.get("caption", "").strip()
@@ -735,9 +908,13 @@ def upload_image(pid):
         _save_webp(im, os.path.join(d, name))
         mtype = "image"
         flash("图片已上传")
-    m = conn.execute("SELECT COALESCE(MAX(sort), -1) m FROM images WHERE project_id=?", (pid,)).fetchone()["m"]
-    conn.execute("INSERT INTO images (project_id, filename, orientation, type, caption, sort) VALUES (?, ?, ?, ?, ?, ?)",
-                 (pid, name, orientation, mtype, caption, m + 1))
+    m = conn.execute(
+        "SELECT COALESCE(MAX(sort), -1) m FROM images WHERE project_id=?", (pid,)
+    ).fetchone()["m"]
+    conn.execute(
+        "INSERT INTO images (project_id, filename, orientation, type, caption, sort) VALUES (?, ?, ?, ?, ?, ?)",
+        (pid, name, orientation, mtype, caption, m + 1),
+    )
     conn.commit()
     conn.close()
     return redirect(url_for("admin_project_edit", pid=pid))
@@ -747,7 +924,9 @@ def upload_image(pid):
 @login_required
 def update_image(iid, pid):
     conn = db.get_db()
-    img = conn.execute("SELECT * FROM images WHERE id=? AND project_id=?", (iid, pid)).fetchone()
+    img = conn.execute(
+        "SELECT * FROM images WHERE id=? AND project_id=?", (iid, pid)
+    ).fetchone()
     if not img:
         conn.close()
         abort(404)
@@ -755,7 +934,10 @@ def update_image(iid, pid):
     orientation = request.form.get("orientation", img["orientation"])
     if orientation not in ("h", "v"):
         orientation = img["orientation"]
-    conn.execute("UPDATE images SET caption=?, orientation=? WHERE id=?", (caption, orientation, iid))
+    conn.execute(
+        "UPDATE images SET caption=?, orientation=? WHERE id=?",
+        (caption, orientation, iid),
+    )
     conn.commit()
     conn.close()
     flash("图片描述已更新")
@@ -766,10 +948,14 @@ def update_image(iid, pid):
 @login_required
 def delete_image(iid, pid):
     conn = db.get_db()
-    img = conn.execute("SELECT * FROM images WHERE id=? AND project_id=?", (iid, pid)).fetchone()
+    img = conn.execute(
+        "SELECT * FROM images WHERE id=? AND project_id=?", (iid, pid)
+    ).fetchone()
     if img:
         proj = conn.execute("SELECT * FROM projects WHERE id=?", (pid,)).fetchone()
-        cat = conn.execute("SELECT * FROM categories WHERE id=?", (proj["category_id"],)).fetchone()
+        cat = conn.execute(
+            "SELECT * FROM categories WHERE id=?", (proj["category_id"],)
+        ).fetchone()
         p = os.path.join(project_dir(cat["name"], pid, proj["title"]), img["filename"])
         if os.path.isfile(p):
             os.remove(p)
@@ -821,14 +1007,21 @@ def admin_experience():
             if not position:
                 flash("职位不能为空")
             elif eid:
-                conn.execute("""UPDATE experiences SET position=?, org=?, org_desc=?, years=?, content=?, detail_html=?
-                                WHERE id=?""", (position, org, org_desc, years, content, detail, eid))
+                conn.execute(
+                    """UPDATE experiences SET position=?, org=?, org_desc=?, years=?, content=?, detail_html=?
+                                WHERE id=?""",
+                    (position, org, org_desc, years, content, detail, eid),
+                )
                 flash("经历已保存")
             else:
-                m = conn.execute("SELECT COALESCE(MAX(sort), -1) m FROM experiences").fetchone()["m"]
-                conn.execute("""INSERT INTO experiences (position, org, org_desc, years, content, detail_html, sort)
+                m = conn.execute(
+                    "SELECT COALESCE(MAX(sort), -1) m FROM experiences"
+                ).fetchone()["m"]
+                conn.execute(
+                    """INSERT INTO experiences (position, org, org_desc, years, content, detail_html, sort)
                                 VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                             (position, org, org_desc, years, content, detail, m + 1))
+                    (position, org, org_desc, years, content, detail, m + 1),
+                )
                 flash("经历已添加")
             conn.commit()
         elif action == "delete":
@@ -842,14 +1035,21 @@ def admin_experience():
             conn.commit()
             flash("板块标题已保存")
         return redirect(url_for("admin_experience"))
-    exps = [dict(e) for e in conn.execute("SELECT * FROM experiences ORDER BY sort, id").fetchall()]
+    exps = [
+        dict(e)
+        for e in conn.execute("SELECT * FROM experiences ORDER BY sort, id").fetchall()
+    ]
     edit = None
     edit_id = request.args.get("edit", type=int)
     if edit_id:
-        edit = conn.execute("SELECT * FROM experiences WHERE id=?", (edit_id,)).fetchone()
+        edit = conn.execute(
+            "SELECT * FROM experiences WHERE id=?", (edit_id,)
+        ).fetchone()
     exp_sec = conn.execute("SELECT * FROM sections WHERE key='experience'").fetchone()
     conn.close()
-    return render_template("admin/experience.html", exps=exps, edit=edit, exp_sec=exp_sec)
+    return render_template(
+        "admin/experience.html", exps=exps, edit=edit, exp_sec=exp_sec
+    )
 
 
 # ---------------------------------------------------------------- 技能
@@ -860,19 +1060,31 @@ def admin_skills():
     if request.method == "POST":
         action = request.form.get("action")
         if action == "save":
-            conn.execute("UPDATE skills SET title=?, subtitle=? WHERE id=1",
-                         (request.form.get("title", "").strip(),
-                          request.form.get("subtitle", "").strip()))
-            conn.execute("UPDATE sections SET title=?, subtitle=? WHERE key='skills'",
-                         (request.form.get("title", "").strip(),
-                          request.form.get("subtitle", "").strip()))
+            conn.execute(
+                "UPDATE skills SET title=?, subtitle=? WHERE id=1",
+                (
+                    request.form.get("title", "").strip(),
+                    request.form.get("subtitle", "").strip(),
+                ),
+            )
+            conn.execute(
+                "UPDATE sections SET title=?, subtitle=? WHERE key='skills'",
+                (
+                    request.form.get("title", "").strip(),
+                    request.form.get("subtitle", "").strip(),
+                ),
+            )
             conn.commit()
             flash("技能区已保存")
         elif action == "add_card":
             t = request.form.get("title", "").strip()
             if t:
-                m = conn.execute("SELECT COALESCE(MAX(sort), -1) m FROM skill_cards").fetchone()["m"]
-                conn.execute("INSERT INTO skill_cards (title, sort) VALUES (?, ?)", (t, m + 1))
+                m = conn.execute(
+                    "SELECT COALESCE(MAX(sort), -1) m FROM skill_cards"
+                ).fetchone()["m"]
+                conn.execute(
+                    "INSERT INTO skill_cards (title, sort) VALUES (?, ?)", (t, m + 1)
+                )
                 conn.commit()
                 flash("卡片已添加")
         elif action == "delete_card":
@@ -884,9 +1096,14 @@ def admin_skills():
             cid = request.form.get("card_id", type=int)
             name = request.form.get("name", "").strip()
             if cid and name:
-                m = conn.execute("SELECT COALESCE(MAX(sort), -1) m FROM skill_tags WHERE card_id=?",
-                                 (cid,)).fetchone()["m"]
-                conn.execute("INSERT INTO skill_tags (card_id, name, sort) VALUES (?, ?, ?)", (cid, name, m + 1))
+                m = conn.execute(
+                    "SELECT COALESCE(MAX(sort), -1) m FROM skill_tags WHERE card_id=?",
+                    (cid,),
+                ).fetchone()["m"]
+                conn.execute(
+                    "INSERT INTO skill_tags (card_id, name, sort) VALUES (?, ?, ?)",
+                    (cid, name, m + 1),
+                )
                 conn.commit()
                 flash("技术标签已添加")
         elif action == "delete_tag":
@@ -896,10 +1113,17 @@ def admin_skills():
             flash("技术标签已删除")
         return redirect(url_for("admin_skills"))
     skills = conn.execute("SELECT * FROM skills WHERE id=1").fetchone()
-    cards = [dict(c) for c in conn.execute("SELECT * FROM skill_cards ORDER BY sort, id").fetchall()]
+    cards = [
+        dict(c)
+        for c in conn.execute("SELECT * FROM skill_cards ORDER BY sort, id").fetchall()
+    ]
     for c in cards:
-        c["tags"] = [dict(t) for t in conn.execute(
-            "SELECT * FROM skill_tags WHERE card_id=? ORDER BY sort, id", (c["id"],)).fetchall()]
+        c["tags"] = [
+            dict(t)
+            for t in conn.execute(
+                "SELECT * FROM skill_tags WHERE card_id=? ORDER BY sort, id", (c["id"],)
+            ).fetchall()
+        ]
     conn.close()
     return render_template("admin/skills.html", skills=skills, cards=cards)
 
@@ -922,16 +1146,24 @@ def admin_settings():
             elif new != confirm:
                 flash("两次输入的新密码不一致")
             else:
-                conn.execute("UPDATE admin SET password_hash=? WHERE id=1", (hash_password(new),))
+                conn.execute(
+                    "UPDATE admin SET password_hash=? WHERE id=1", (hash_password(new),)
+                )
                 conn.commit()
                 flash("密码已更新")
         elif action == "cdn":
             enabled = "1" if request.form.get("cdn_enabled") == "on" else "0"
             base = (request.form.get("cdn_base") or "").strip().rstrip("/")
-            conn.execute("INSERT INTO settings (key, value) VALUES ('cdn_enabled', ?) "
-                         "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (enabled,))
-            conn.execute("INSERT INTO settings (key, value) VALUES ('cdn_base', ?) "
-                         "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (base,))
+            conn.execute(
+                "INSERT INTO settings (key, value) VALUES ('cdn_enabled', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (enabled,),
+            )
+            conn.execute(
+                "INSERT INTO settings (key, value) VALUES ('cdn_base', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                (base,),
+            )
             conn.commit()
             _cdn_cfg["loaded"] = False
             flash("CDN 设置已保存")
@@ -944,28 +1176,46 @@ def admin_settings():
                 items.append((k, nav, sort))
             items.sort(key=lambda x: (x[2], x[0]))
             for i, (k, nav, _sort) in enumerate(items, 1):
-                conn.execute("UPDATE sections SET nav_label=?, sort=? WHERE key=?", (nav, i, k))
+                conn.execute(
+                    "UPDATE sections SET nav_label=?, sort=? WHERE key=?", (nav, i, k)
+                )
             conn.commit()
-            flash("板块名称与顺序已保存（序号已自动归一为连续 1-%d）" % len(items))
+            flash(f"板块名称与顺序已保存（序号已自动归一为连续 1-{len(items)}）")
         return redirect(url_for("admin_settings"))
-    kv = dict((r["key"], r["value"]) for r in conn.execute(
-        "SELECT key, value FROM settings").fetchall())
-    _SEC_LABELS = {"basic": ("基础信息", ""), "summary": ("个人概要", ""),
-                   "projects": ("精选项目", ""), "experience": ("工作经历", ""),
-                   "skills": ("专业技能", ""), "system": ("系统设置", "仅控制后台")}
+    kv = {
+        r["key"]: r["value"]
+        for r in conn.execute("SELECT key, value FROM settings").fetchall()
+    }
+    _SEC_LABELS = {
+        "basic": ("基础信息", ""),
+        "summary": ("个人概要", ""),
+        "projects": ("精选项目", ""),
+        "experience": ("工作经历", ""),
+        "skills": ("专业技能", ""),
+        "system": ("系统设置", "仅控制后台"),
+    }
     sec_rows = conn.execute("SELECT * FROM sections ORDER BY sort, key").fetchall()
     secs = {r["key"]: r for r in sec_rows}
     sec_list = []
     for r in sec_rows:
         label, note = _SEC_LABELS.get(r["key"], (r["key"], ""))
-        sec_list.append({"key": r["key"], "label": label, "note": note,
-                         "nav_label": r["nav_label"], "sort": r["sort"]})
+        sec_list.append(
+            {
+                "key": r["key"],
+                "label": label,
+                "note": note,
+                "nav_label": r["nav_label"],
+                "sort": r["sort"],
+            }
+        )
     conn.close()
-    return render_template("admin/settings.html",
-                           cdn_enabled=kv.get("cdn_enabled") == "1",
-                           cdn_base=kv.get("cdn_base", ""),
-                           secs=secs,
-                           sec_list=sec_list)
+    return render_template(
+        "admin/settings.html",
+        cdn_enabled=kv.get("cdn_enabled") == "1",
+        cdn_base=kv.get("cdn_base", ""),
+        secs=secs,
+        sec_list=sec_list,
+    )
 
 
 # 启动时每日自动备份（模块导入即执行，覆盖 gunicorn 生产模式）

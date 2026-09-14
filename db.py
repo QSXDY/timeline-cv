@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 """SQLite schema for yfq-resume."""
+
 import os
 import sqlite3
 
@@ -166,8 +166,12 @@ def _drop_legacy_cols(conn):
     try:
         cols = [r[1] for r in conn.execute("PRAGMA table_info(classifications)")]
         if "section" in cols:
-            conn.execute("CREATE TABLE classifications_new (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, sort INTEGER NOT NULL DEFAULT 0)")
-            conn.execute("INSERT INTO classifications_new (id, name, sort) SELECT id, name, sort FROM classifications")
+            conn.execute(
+                "CREATE TABLE classifications_new (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, sort INTEGER NOT NULL DEFAULT 0)"
+            )
+            conn.execute(
+                "INSERT INTO classifications_new (id, name, sort) SELECT id, name, sort FROM classifications"
+            )
             conn.execute("DROP TABLE classifications")
             conn.execute("ALTER TABLE classifications_new RENAME TO classifications")
             conn.commit()
@@ -177,8 +181,12 @@ def _drop_legacy_cols(conn):
     try:
         cols = [r[1] for r in conn.execute("PRAGMA table_info(categories)")]
         if "kind" in cols:
-            conn.execute("CREATE TABLE categories_new (id INTEGER PRIMARY KEY AUTOINCREMENT, classification_id INTEGER NOT NULL DEFAULT 0, name TEXT NOT NULL, subtitle TEXT NOT NULL DEFAULT '', tags TEXT NOT NULL DEFAULT '', sort INTEGER NOT NULL DEFAULT 0)")
-            conn.execute("INSERT INTO categories_new (id, classification_id, name, subtitle, tags, sort) SELECT id, classification_id, name, subtitle, tags, sort FROM categories")
+            conn.execute(
+                "CREATE TABLE categories_new (id INTEGER PRIMARY KEY AUTOINCREMENT, classification_id INTEGER NOT NULL DEFAULT 0, name TEXT NOT NULL, subtitle TEXT NOT NULL DEFAULT '', tags TEXT NOT NULL DEFAULT '', sort INTEGER NOT NULL DEFAULT 0)"
+            )
+            conn.execute(
+                "INSERT INTO categories_new (id, classification_id, name, subtitle, tags, sort) SELECT id, classification_id, name, subtitle, tags, sort FROM categories"
+            )
             conn.execute("DROP TABLE categories")
             conn.execute("ALTER TABLE categories_new RENAME TO categories")
             conn.commit()
@@ -196,8 +204,12 @@ def _repair_projects_fk(conn):
     改指向 projects_old，DROP projects_old 时触发 ON DELETE CASCADE 清空 images。
     因此两个表成对重建：建新表 → 拷数据 → 删旧表（先 images 后 projects）→ RENAME。"""
     try:
-        tables = [r[0] for r in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('projects','projects_old')").fetchall()]
+        tables = [
+            r[0]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('projects','projects_old')"
+            ).fetchall()
+        ]
         if "projects" not in tables:
             # projects 缺失但 projects_old 存在（被 RENAME 过）：直接改回即可（引用方 FK 会随之更新）
             if "projects_old" in tables:
@@ -209,10 +221,18 @@ def _repair_projects_fk(conn):
         bad = any(fk[2] != "categories" for fk in fks)
         if not bad:
             return
-        conn.execute("CREATE TABLE projects_new (id INTEGER PRIMARY KEY AUTOINCREMENT, category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE, title TEXT NOT NULL, desc TEXT NOT NULL DEFAULT '', detail_html TEXT NOT NULL DEFAULT '', pub_date TEXT, sort INTEGER NOT NULL DEFAULT 255)")
-        conn.execute("CREATE TABLE images_new (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE, filename TEXT NOT NULL, orientation TEXT NOT NULL DEFAULT 'h', caption TEXT NOT NULL DEFAULT '', sort INTEGER NOT NULL DEFAULT 0, type TEXT NOT NULL DEFAULT 'image')")
-        conn.execute("INSERT INTO projects_new (id, category_id, title, desc, detail_html, pub_date, sort) SELECT id, category_id, title, desc, detail_html, pub_date, sort FROM projects")
-        conn.execute("INSERT INTO images_new (id, project_id, filename, orientation, caption, sort, type) SELECT id, project_id, filename, orientation, caption, sort, type FROM images")
+        conn.execute(
+            "CREATE TABLE projects_new (id INTEGER PRIMARY KEY AUTOINCREMENT, category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE, title TEXT NOT NULL, desc TEXT NOT NULL DEFAULT '', detail_html TEXT NOT NULL DEFAULT '', pub_date TEXT, sort INTEGER NOT NULL DEFAULT 255)"
+        )
+        conn.execute(
+            "CREATE TABLE images_new (id INTEGER PRIMARY KEY AUTOINCREMENT, project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE, filename TEXT NOT NULL, orientation TEXT NOT NULL DEFAULT 'h', caption TEXT NOT NULL DEFAULT '', sort INTEGER NOT NULL DEFAULT 0, type TEXT NOT NULL DEFAULT 'image')"
+        )
+        conn.execute(
+            "INSERT INTO projects_new (id, category_id, title, desc, detail_html, pub_date, sort) SELECT id, category_id, title, desc, detail_html, pub_date, sort FROM projects"
+        )
+        conn.execute(
+            "INSERT INTO images_new (id, project_id, filename, orientation, caption, sort, type) SELECT id, project_id, filename, orientation, caption, sort, type FROM images"
+        )
         conn.execute("DROP TABLE images")
         conn.execute("DROP TABLE projects")
         conn.execute("ALTER TABLE projects_new RENAME TO projects")
