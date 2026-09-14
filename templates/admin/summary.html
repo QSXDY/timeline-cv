@@ -1,0 +1,49 @@
+{% extends "admin/base.html" %}
+{% block title %}概要{% endblock %}
+{% block content %}
+<h1>概要</h1>
+<p class="hint">前台「概要」区：主标题、副标题，以及 3×3 卡片布局的内容卡片。</p>
+
+<form method="post" action="{{ url_for('admin_summary') }}">
+  <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+  <input type="hidden" name="action" value="save">
+  <div class="panel">
+    <label>主标题</label>
+    <input type="text" name="title" value="{{ summary.title }}">
+    <label>副标题</label>
+    <textarea name="subtitle" rows="2">{{ summary.subtitle }}</textarea>
+    <div style="margin-top: 18px;">
+      <button class="btn" type="submit">保存标题</button>
+    </div>
+  </div>
+</form>
+
+<div class="panel">
+  <h2>内容卡片（3×3 布局，最多 9 个）</h2>
+  {% for c in cards %}
+  <div class="inline" style="margin-bottom: 10px;">
+    <input type="text" value="{{ c.title }}" disabled style="max-width: 180px;">
+    <input type="text" value="{{ c.content }}" disabled>
+    <form method="post" action="{{ url_for('delete_summary_card', cid=c.id) }}" onsubmit="return confirm('删除卡片「{{ c.title }}」？')">
+      <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+      <button class="btn small danger" type="submit">删除</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="muted">还没有卡片。</p>
+  {% endfor %}
+  {% if cards|length < 9 %}
+  <form method="post" action="{{ url_for('admin_summary') }}" style="margin-top: 16px; border-top: 1px solid var(--line); padding-top: 16px;">
+    <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+    <input type="hidden" name="action" value="add_card">
+    <div class="row2">
+      <div><label>卡片标题</label><input type="text" name="title" required></div>
+      <div><label>卡片内容</label><input type="text" name="content" required></div>
+    </div>
+    <div style="margin-top: 16px;"><button class="btn" type="submit">添加卡片</button></div>
+  </form>
+  {% else %}
+  <p class="muted" style="margin-top: 14px;">已达 9 个卡片上限，请先删除再添加。</p>
+  {% endif %}
+</div>
+{% endblock %}

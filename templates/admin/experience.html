@@ -1,0 +1,67 @@
+{% extends "admin/base.html" %}
+{% block title %}工作经历{% endblock %}
+{% block content %}
+<h1>工作经历</h1>
+<p class="hint">职位、公司、日期与工作内容；「工作详情」用富文本编辑器，适合写长文章（可留空）。</p>
+
+
+<div class="panel">
+  <h2>板块标题</h2>
+  <p class="panel-sub">显示在前台工作经历大区块内（眉题取板块名，在系统设置配置）。</p>
+  <form method="post" action="{{ url_for('admin_experience') }}">
+    <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+    <input type="hidden" name="action" value="section_title">
+    <label>主标题</label>
+    <input type="text" name="title" value="{{ exp_sec['title'] if exp_sec else '' }}" placeholder="如：电视台、广告公司、新媒体。">
+    <div style="margin-top: 16px;"><button class="btn" type="submit">保存板块标题</button></div>
+  </form>
+</div>
+<div class="panel">
+  <h2>{% if edit %}编辑经历{% else %}新增经历{% endif %}</h2>
+  <form method="post" action="{{ url_for('admin_experience') }}">
+    <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+    <input type="hidden" name="action" value="{% if edit %}edit{% else %}add{% endif %}">
+    {% if edit %}<input type="hidden" name="id" value="{{ edit.id }}">{% endif %}
+    <div class="row2">
+      <div><label>职位</label><input type="text" name="position" value="{{ edit.position if edit else '' }}" required></div>
+      <div><label>公司 / 单位</label><input type="text" name="org" value="{{ edit.org if edit else '' }}"></div>
+    </div>
+    <div class="row2">
+      <div><label>职位一句话描述（显示在公司下方）</label><input type="text" name="org_desc" value="{{ edit.org_desc if edit else '' }}"></div>
+      <div><label>日期（如 2016 — 2026）</label><input type="text" name="years" value="{{ edit.years if edit else '' }}"></div>
+    </div>
+    <label>工作内容（每行一条，自动转列表）</label>
+    <textarea name="content" rows="5">{{ edit.content if edit else '' }}</textarea>
+    <label>工作详情（富文本，可留空）</label>
+    <div class="editor-box" id="editor"></div>
+    <textarea name="detail_html" id="detail_html" style="display: none;">{{ edit.detail_html if edit else '' }}</textarea>
+    <div style="margin-top: 20px; display: flex; gap: 10px;">
+      <button class="btn" type="submit">保存</button>
+      {% if edit %}<a class="btn ghost" href="{{ url_for('admin_experience') }}">取消编辑</a>{% endif %}
+    </div>
+  </form>
+</div>
+
+<div class="panel">
+  <h2>已有经历</h2>
+  {% for e in exps %}
+  <div class="inline" style="margin-bottom: 10px;">
+    <span style="min-width: 200px;"><b>{{ e.org }} · {{ e.position }}</b> <span class="muted">{{ e.years }}</span></span>
+    <a class="btn small ghost" href="{{ url_for('admin_experience', edit=e.id) }}">编辑</a>
+    <form method="post" action="{{ url_for('admin_experience') }}" onsubmit="return confirm('删除经历「{{ e.position }}」？')">
+      <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+      <input type="hidden" name="action" value="delete">
+      <input type="hidden" name="id" value="{{ e.id }}">
+      <button class="btn small danger" type="submit">删除</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="muted">还没有经历。</p>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/wangEditor.min.js') }}"></script>
+<script>initEditor('editor', 'detail_html');</script>
+{% endblock %}

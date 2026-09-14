@@ -1,0 +1,75 @@
+{% extends "admin/base.html" %}
+{% block title %}基础信息{% endblock %}
+{% block content %}
+<h1>基础信息</h1>
+<p class="hint">前台首页顶部（名字 / 标题 / 简介 / 联系方式等）。</p>
+
+<form method="post" action="{{ url_for('admin_basic') }}" enctype="multipart/form-data">
+  <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+  <div class="panel">
+    <div class="row2">
+      <div>
+        <label>姓名</label>
+        <input type="text" name="name" value="{{ info.name }}" required>
+      </div>
+      <div>
+        <label>标题（role）</label>
+        <input type="text" name="role" value="{{ info.role }}" required>
+      </div>
+    </div>
+    <label>简介（lead）</label>
+    <textarea name="lead" rows="4">{{ info.lead }}</textarea>
+    <div class="row2">
+      <div>
+        <label>求职意向</label>
+        <input type="text" name="intent" value="{{ info.intent }}">
+      </div>
+      <div>
+        <label>期望薪资</label>
+        <input type="text" name="salary" value="{{ info.salary }}">
+      </div>
+    </div>
+    <div class="row2">
+      <div>
+        <label>期望工作地</label>
+        <input type="text" name="location" value="{{ info.location }}">
+      </div>
+      <div>
+        <label>邮箱</label>
+        <input type="email" name="email" value="{{ info.email }}">
+      </div>
+    </div>
+    <label>基本情况（性别 / 年龄 / 年限）</label>
+    <input type="text" name="profile" value="{{ info.profile }}">
+    <div style="margin-top: 22px;">
+      <button class="btn" type="submit">保存</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>个人照片（可选）</h2>
+    <p class="panel-sub">1:1 头像，显示在前台首页顶部；不传则前台完全不留痕迹。</p>
+    <div class="avatar-row">
+      {% if info.avatar %}
+      <div class="avatar-preview"><img src="{{ url_for('static', filename='uploads/_avatar/' + info.avatar) }}" alt=""></div>
+      {% else %}
+      <div class="avatar-preview empty"><span>未上传</span></div>
+      {% endif %}
+      <div class="avatar-ops">
+        <div class="avatar-btns">
+          <input type="file" name="avatar" accept="image/*">
+          {% if info.avatar %}<button class="btn small danger" type="submit" form="del-avatar">删除头像</button>{% endif %}
+        </div>
+        <p class="muted">jpg / png / gif / webp，≤20MB</p>
+      </div>
+    </div>
+  </div>
+</form>
+
+{% if info.avatar %}
+<form id="del-avatar" method="post" action="{{ url_for('admin_basic') }}" onsubmit="return confirm('删除头像？')" style="display: none;">
+  <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+  <input type="hidden" name="action" value="delete_avatar">
+</form>
+{% endif %}
+{% endblock %}

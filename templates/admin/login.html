@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 · 杨芳清简历后台</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .login-box { width: 380px; }
+  .login-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+  .login-logo { width: 38px; height: 38px; border-radius: 10px; object-fit: cover; }
+  .login-box p { color: var(--ink-2); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="login-box">
+  <div class="login-brand"><img src="{{ url_for('static', filename='logo.webp') }}" alt="logo" class="login-logo"><p>登录后管理简历内容</p></div>
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div class="flash">
+      {% for m in messages %}<div class="msg">{{ m }}</div>{% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+  <form method="post" action="{{ url_for('admin_login') }}">
+    <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+    <label>账号</label>
+    <input type="text" name="username" autocomplete="username" required autofocus>
+    <label>密码</label>
+    <input type="password" name="password" autocomplete="current-password" required>
+    <div style="margin-top: 22px;">
+      <button class="btn" type="submit" style="width: 100%; padding: 11px;">登 录</button>
+    </div>
+  </form>
+</div>
+</body>
+</html>

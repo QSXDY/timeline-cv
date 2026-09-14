@@ -1,0 +1,156 @@
+{% extends "admin/base.html" %}
+{% block title %}项目编辑{% endblock %}
+{% block content %}
+<h1>项目编辑</h1>
+<p class="hint">所属分组：{{ cat.name }} · 图片存放于 <code>static/uploads/{{ cat.name }}/{{ proj.id }}-{{ proj.title }}</code>（目录与标题解耦，改标题不迁移）。</p>
+
+<form method="post" action="{{ url_for('admin_project_edit', pid=proj.id) }}">
+  <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+  <input type="hidden" name="action" value="save">
+  <div class="panel">
+    <div class="row3">
+      <div>
+        <label>一级分类</label>
+        <select id="cl-select" onchange="filterGroups()">
+          {% for cl in cls %}
+          <option value="{{ cl.id }}" {% if cl.id == cl_id %}selected{% endif %}>{{ cl.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>所属分组</label>
+        <select name="category_id" id="cat-select" required>
+          {% for cl in cls %}
+            {% for g in cl.groups %}
+            <option value="{{ g.id }}" data-cl="{{ cl.id }}" {% if g.id == cat.id %}selected{% endif %}>{{ g.name }}</option>
+            {% endfor %}
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>项目标题</label>
+        <input type="text" name="title" value="{{ proj.title }}" required>
+      </div>
+    </div>
+    <script>
+      function filterGroups() {
+        var cl = document.getElementById('cl-select').value;
+        var sel = document.getElementById('cat-select');
+        var first = null;
+        for (var i = 0; i < sel.options.length; i++) {
+          var o = sel.options[i];
+          var show = o.getAttribute('data-cl') === cl;
+          o.style.display = show ? '' : 'none';
+          if (show && first === null) first = o;
+        }
+        if (first) sel.value = first.value;
+      }
+      filterGroups();
+    </script>
+    <label>副标题（描述，显示在条目名称旁）</label>
+    <textarea name="desc" rows="2">{{ proj.desc }}</textarea>
+    <label>日期（前台显示到日，后台可精确到分钟；留空排最后）</label>
+    <input type="datetime-local" name="pub_date" value="{{ proj.pub_date.replace(' ', 'T') if proj.pub_date else '' }}">
+    <label>排序（默认 255，同日期的序号小在前，如 254 在 255 前）</label>
+    <input type="number" name="sort" value="{{ proj.sort if proj.sort is not none else 255 }}" min="0" style="width: 120px;">
+    <label>详情（富文本，显示在图片下方；可留空）</label>
+    <div class="editor-box" id="editor"></div>
+    <textarea name="detail_html" id="detail_html" style="display: none;">{{ proj.detail_html }}</textarea>
+    <div style="margin-top: 20px; display: flex; gap: 10px;">
+      <button class="btn" type="submit">保存项目</button>
+      <a class="btn ghost" href="{{ url_for('admin_projects', category_id=cat.id) }}">返回项目列表</a>
+    </div>
+  </div>
+</form>
+
+<div class="panel">
+  <h2>上传图片 / 视频</h2>
+  <form class="upload-box" method="post" action="{{ url_for('upload_image', pid=proj.id) }}" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+    <div class="row3">
+      <div>
+        <label>方向（预选）</label>
+        <select name="orientation">
+          <option value="h">横图（16:9，一行 3 张）</option>
+          <option value="v">竖图（9:16，一行 6 张）</option>
+        </select>
+      </div>
+      <div>
+        <label>描述（可选）</label>
+        <input type="text" name="caption">
+      </div>
+      <div>
+        <label>文件（图片自动转 webp；视频原样保存）</label>
+        <input type="file" name="file" accept=".jpg,.jpeg,.png,.gif,.webp,.mp4,.m4v,.mov,.webm" required>
+      </div>
+    </div>
+    <div style="margin-top: 16px;"><button class="btn" type="submit">上传</button></div>
+  </form>
+</div>
+
+{% if land %}
+<div class="panel">
+  <h2>横图（一行 3 张）· {{ land|length }} 张</h2>
+  <div class="img-grid land">
+    {% for img in land %}
+    <div class="img-card">
+      <div class="thumb">{% if img.type == 'video' %}<video src="{{ img_url(cat.name, proj.id, proj.title, img.filename) }}" muted preload="metadata"></video>{% else %}<img src="{{ img_url(cat.name, proj.id, proj.title, img.filename) }}" alt="">{% endif %}</div>
+      <div class="meta">
+        <form method="post" action="{{ url_for('update_image', pid=proj.id, iid=img.id) }}">
+          <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+          <input type="text" name="caption" value="{{ img.caption }}" placeholder="图片描述">
+          <div class="op">
+            <button class="btn small danger" type="submit" form="del-{{ img.id }}">删除</button>
+            <select name="orientation">
+              <option value="h" {% if img.orientation == 'h' %}selected{% endif %}>横图</option>
+              <option value="v" {% if img.orientation == 'v' %}selected{% endif %}>竖图</option>
+            </select>
+            <button class="btn small" type="submit">保存</button>
+          </div>
+        </form>
+        <form method="post" action="{{ url_for('delete_image', pid=proj.id, iid=img.id) }}" id="del-{{ img.id }}" onsubmit="return confirm('删除这张图片？')">
+          <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% if port %}
+<div class="panel">
+  <h2>竖图（一行 6 张）· {{ port|length }} 张</h2>
+  <div class="img-grid port">
+    {% for img in port %}
+    <div class="img-card">
+      <div class="thumb">{% if img.type == 'video' %}<video src="{{ img_url(cat.name, proj.title, img.filename) }}" muted preload="metadata"></video>{% else %}<img src="{{ img_url(cat.name, proj.title, img.filename) }}" alt="">{% endif %}</div>
+      <div class="meta">
+        <form method="post" action="{{ url_for('update_image', pid=proj.id, iid=img.id) }}">
+          <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+          <input type="text" name="caption" value="{{ img.caption }}" placeholder="图片描述">
+          <div class="op">
+            <button class="btn small danger" type="submit" form="del-{{ img.id }}">删除</button>
+            <select name="orientation">
+              <option value="h" {% if img.orientation == 'h' %}selected{% endif %}>横图</option>
+              <option value="v" {% if img.orientation == 'v' %}selected{% endif %}>竖图</option>
+            </select>
+            <button class="btn small" type="submit">保存</button>
+          </div>
+        </form>
+        <form method="post" action="{{ url_for('delete_image', pid=proj.id, iid=img.id) }}" id="del-{{ img.id }}" onsubmit="return confirm('删除这张图片？')">
+          <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/wangEditor.min.js') }}"></script>
+<script>initEditor('editor', 'detail_html');</script>
+{% endblock %}

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}后台管理{% endblock %} · 杨芳清简历</title>
+<link rel="icon" href="{{ url_for('static', filename='logo.webp') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body>
+<div class="admin-wrap">
+  <aside class="admin-side">
+    <div class="brand"><img src="{{ url_for('static', filename='logo.webp') }}" alt="logo" class="brand-logo"><span>后台管理</span></div>
+    <nav class="side-nav">
+      {% for s in nav_items %}
+      {% if s.key == 'basic' %}
+      <a class="nav {% if active == 'basic' %}active{% endif %}" href="{{ url_for('admin_basic') }}">{{ s.nav_label }}</a>
+      {% elif s.key == 'summary' %}
+      <a class="nav {% if active == 'summary' %}active{% endif %}" href="{{ url_for('admin_summary') }}">{{ s.nav_label }}</a>
+      {% elif s.key == 'projects' %}
+      <details class="nav-group"{% if active in ('classifications', 'categories', 'projects') %} open{% endif %}>
+        <summary class="nav nav-parent{% if active in ('classifications', 'categories', 'projects') %} active{% endif %}">{{ s.nav_label }}</summary>
+        <a class="nav nav-child {% if active == 'classifications' %}active{% endif %}" href="{{ url_for('admin_classifications') }}">项目分类</a>
+        <a class="nav nav-child {% if active == 'categories' %}active{% endif %}" href="{{ url_for('admin_categories') }}">项目分组</a>
+        <a class="nav nav-child {% if active == 'projects' %}active{% endif %}" href="{{ url_for('admin_projects') }}">项目内容</a>
+      </details>
+      {% elif s.key == 'experience' %}
+      <a class="nav {% if active == 'experience' %}active{% endif %}" href="{{ url_for('admin_experience') }}">{{ s.nav_label }}</a>
+      {% elif s.key == 'skills' %}
+      <a class="nav {% if active == 'skills' %}active{% endif %}" href="{{ url_for('admin_skills') }}">{{ s.nav_label }}</a>
+      {% elif s.key == 'system' %}
+      <a class="nav {% if active == 'settings' %}active{% endif %}" href="{{ url_for('admin_settings') }}">{{ s.nav_label }}</a>
+      {% endif %}
+      {% endfor %}
+    </nav>
+    <div class="side-foot">
+      <form method="post" action="{{ url_for('admin_logout') }}">
+        <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+        <button class="logout" type="submit">退出登录</button>
+      </form>
+      <div class="side-meta">yfq-resume · Flask + SQLite</div>
+    </div>
+  </aside>
+  <div class="admin-main">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+      <div class="flash">
+        {% for m in messages %}<div class="msg">{{ m }}</div>{% endfor %}
+      </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

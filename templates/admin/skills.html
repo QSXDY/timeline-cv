@@ -1,0 +1,65 @@
+{% extends "admin/base.html" %}
+{% block title %}技能{% endblock %}
+{% block content %}
+<h1>技能</h1>
+<p class="hint">技能区标题、副标题（可留空），以及左右分栏的技能卡片（卡片标题 + 技术标签）。</p>
+
+<form method="post" action="{{ url_for('admin_skills') }}">
+  <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+  <input type="hidden" name="action" value="save">
+  <div class="panel">
+    <div class="row2">
+      <div><label>主标题</label><input type="text" name="title" value="{{ skills.title }}"></div>
+      <div><label>副标题（可留空）</label><input type="text" name="subtitle" value="{{ skills.subtitle }}"></div>
+    </div>
+    <div style="margin-top: 18px;"><button class="btn" type="submit">保存标题</button></div>
+  </div>
+</form>
+
+<div class="panel">
+  <h2>新增技能卡片</h2>
+  <form method="post" action="{{ url_for('admin_skills') }}">
+    <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+    <input type="hidden" name="action" value="add_card">
+    <div class="inline">
+      <input type="text" name="title" placeholder="卡片标题，如：影视与运营" required>
+      <button class="btn" type="submit">添加卡片</button>
+    </div>
+  </form>
+</div>
+
+{% for c in cards %}
+<div class="panel">
+  <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 10px;">
+    <h2 style="margin-bottom: 0;">{{ c.title }}</h2>
+    <form method="post" action="{{ url_for('admin_skills') }}" onsubmit="return confirm('删除卡片「{{ c.title }}」？')">
+      <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+      <input type="hidden" name="action" value="delete_card">
+      <input type="hidden" name="id" value="{{ c.id }}">
+      <button class="btn small danger" type="submit">删除卡片</button>
+    </form>
+  </div>
+  <div class="taglist">
+    {% for t in c.tags %}
+    <span class="tag">{{ t.name }}
+      <form method="post" action="{{ url_for('admin_skills') }}">
+        <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+        <input type="hidden" name="action" value="delete_tag">
+        <input type="hidden" name="id" value="{{ t.id }}">
+        <button class="x" type="submit" title="删除">×</button>
+      </form>
+    </span>
+    {% endfor %}
+  </div>
+  <form method="post" action="{{ url_for('admin_skills') }}" style="margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px;">
+    <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+    <input type="hidden" name="action" value="add_tag">
+    <input type="hidden" name="card_id" value="{{ c.id }}">
+    <div class="inline">
+      <input type="text" name="name" placeholder="新增技术标签" required>
+      <button class="btn small" type="submit">添加标签</button>
+    </div>
+  </form>
+</div>
+{% endfor %}
+{% endblock %}

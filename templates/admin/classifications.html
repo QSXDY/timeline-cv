@@ -1,0 +1,60 @@
+{% extends "admin/base.html" %}
+{% block title %}项目分类{% endblock %}
+{% block content %}
+<h1>精选项目 · 项目分类</h1>
+<p class="hint">一级分类（如「精选项目」「AIGC 经历」「短视频作品」）全部显示在前台精选项目大板块内，分类名作小节标题。分类下再建分组（3.2），分组下才是具体项目（3.3）。</p>
+
+<div class="panel">
+  <h2>精选项目 · 板块标题</h2>
+  <p class="panel-sub">显示在前台精选项目大区块内（眉题取板块名，在系统设置配置）。</p>
+  <form method="post" action="{{ url_for('admin_classifications') }}">
+    <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+    <input type="hidden" name="action" value="section_title">
+    <label>主标题</label>
+    <input type="text" name="title" value="{{ psec['title'] if psec else '' }}" placeholder="如：把内容交给现场，把结果交给客户。">
+    <label>副标题</label>
+    <input type="text" name="subtitle" value="{{ psec['subtitle'] if psec else '' }}" placeholder="如：按项目类型分组，每一条对应纪要中的一个时间节点。">
+    <div style="margin-top: 16px;"><button class="btn" type="submit">保存板块标题</button></div>
+  </form>
+</div>
+
+<div class="panel">
+  <h2>新增分类</h2>
+  <form method="post" action="{{ url_for('admin_classifications') }}">
+    <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+    <input type="hidden" name="action" value="add">
+    <div class="row3">
+      <div>
+        <label>分类名称</label>
+        <input type="text" name="name" placeholder="如：精选项目 / AIGC 经历 / 短视频作品" required>
+      </div>
+      <div><label>排序</label><input type="number" name="sort" value="0"></div>
+    </div>
+    <div style="margin-top: 18px;"><button class="btn" type="submit">添加分类</button></div>
+  </form>
+</div>
+
+{% for c in cls %}
+<div class="panel">
+  <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px;">
+    <h2 style="margin-bottom: 0;">{{ c.name }} <span class="count muted">· {{ c.n }} 个分组</span></h2>
+    <form method="post" action="{{ url_for('admin_classifications') }}" onsubmit="return confirm('删除分类「{{ c.name }}」？其下全部分组、项目与图片将一并删除！')">
+      <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+      <input type="hidden" name="action" value="delete">
+      <input type="hidden" name="id" value="{{ c.id }}">
+      <button class="btn small danger" type="submit">删除分类</button>
+    </form>
+  </div>
+  <form method="post" action="{{ url_for('admin_classifications') }}">
+    <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+    <input type="hidden" name="action" value="edit">
+    <input type="hidden" name="id" value="{{ c.id }}">
+    <div class="row3">
+      <div><label>分类名称</label><input type="text" name="name" value="{{ c.name }}" required></div>
+      <div><label>排序</label><input type="number" name="sort" value="{{ c.sort }}"></div>
+    </div>
+    <div style="margin-top: 16px;"><button class="btn" type="submit">保存分类</button></div>
+  </form>
+</div>
+{% endfor %}
+{% endblock %}

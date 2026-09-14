@@ -1,0 +1,71 @@
+{% extends "admin/base.html" %}
+{% block title %}项目内容{% endblock %}
+{% block content %}
+<h1>精选项目 · 项目内容</h1>
+<p class="hint">先选一级分类，再选分组，即可管理该分组下的具体项目；新建项目后进入编辑页上传图片（横图 3 张一行 / 竖图 6 张一行）。</p>
+
+<div class="panel">
+  <h2>① 选择分类</h2>
+  <div class="inline">
+    {% for cl in cls %}
+    <a class="btn small {% if cl.id == clid %}ghost{% endif %}" href="{{ url_for('admin_projects', classification_id=cl.id) }}">{{ cl.name }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+{% if clid %}
+<div class="panel">
+  <h2>② 选择分组</h2>
+  {% set cur = cls | selectattr('id', 'equalto', clid) | first %}
+  {% if cur and cur.groups %}
+  <div class="inline">
+    {% for g in cur.groups %}
+    <a class="btn small {% if g.id == cid %}ghost{% endif %}" href="{{ url_for('admin_projects', classification_id=clid, category_id=g.id) }}">{{ g.name }}</a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">该分类下还没有分组，请先到「项目分组」添加。</p>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if cid %}
+<div class="panel">
+  <h2>③ 新建项目</h2>
+  <form method="post" action="{{ url_for('admin_projects') }}">
+    <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+    <input type="hidden" name="category_id" value="{{ cid }}">
+    <div class="inline">
+      <input type="text" name="title" placeholder="项目标题" required>
+      <button class="btn" type="submit">新建并去编辑</button>
+    </div>
+  </form>
+</div>
+
+<div class="panel">
+  <table class="tbl">
+    <tr><th>项目标题</th><th>日期</th><th>序号</th><th>图数</th><th class="actions">操作</th></tr>
+    {% for p in projs %}
+    <tr>
+      <td>{{ p.title }}</td>
+      <td><span class="count">{{ p.pub_date[:10].replace('-', '·') if p.pub_date else '—' }}</span></td>
+      <td><span class="count">{{ p.sort }}</span></td>
+      <td><span class="count">{{ p.n }}</span></td>
+      <td class="actions">
+        <a class="btn small" href="{{ url_for('admin_project_edit', pid=p.id) }}">编辑 / 图片</a>
+        <form method="post" action="{{ url_for('admin_project_edit', pid=p.id) }}" onsubmit="return confirm('删除项目「{{ p.title }}」？其图片会被一并删除！')">
+          <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+          <input type="hidden" name="action" value="delete">
+          <button class="btn small danger" type="submit">删除</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="3" class="muted">该分组下还没有项目。</td></tr>
+    {% endfor %}
+  </table>
+</div>
+{% elif clid %}
+<p class="muted" style="margin-top: 14px;">请先在上方选择分组。</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# 安全：登录密钥（绝不入库）
+secret.key
+
+# 数据库备份历史（当前库 resume.db 保留入库，bak 系列本地保留）
+resume.db.bak
+resume.db.bak_*
+resume.db.broken_*
+
+# 每日自动备份
+backups/
+
+# 工具缓存
+.preview/
+.DS_Store
+Thumbs.db

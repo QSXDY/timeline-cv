@@ -1,0 +1,39 @@
+# =============================================================================
+# yfq-resume 简历站 · Docker Compose 部署
+# 网络使用 1Panel 默认网络（external），配合 1Panel 反向代理
+# 数据持久化：./data/ 目录（resume.db、secret.key）+ ./data/uploads（图片）
+# 首次启动自动从镜像种子恢复数据，之后以宿主机卷为准
+# =============================================================================
+services:
+  resume:
+    build: .
+    image: yfq-resume:latest
+    container_name: yfq-resume
+    restart: unless-stopped
+    # 如需直接访问测试可保留；走 1Panel 反代时也可删除本段
+    ports:
+      - "5000:5000"
+    environment:
+      # 数据库与会话密钥指向挂载卷（覆盖代码默认的 ./resume.db ./secret.key）
+      - RESUME_DB=/app/data/resume.db
+      - SECRET_KEY_FILE=/app/data/secret.key
+      # 自动备份目录（每日一次，保留 7 份；写入挂载卷内便于 1Panel 打包备份）
+      - RESUME_BACKUP_DIR=/app/data/backups
+    volumes:
+      - ./data:/app/data
+      - ./data/uploads:/app/static/uploads
+    # 注意：不要单独 bind mount 单文件（如 ./data/logo.png:/app/static/logo.png）——
+    # 宿主机文件不存在时 Docker 会建目录导致容器启动失败。
+    # LOGO 走目录挂载：把新 LOGO 放到 ./data/logo.png，重启容器即生效（entrypoint 自动同步）。
+    networks:
+      - 1panel-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:5000/', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+networks:
+  1panel-network:
+    external: true

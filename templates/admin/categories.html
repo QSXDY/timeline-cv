@@ -1,0 +1,69 @@
+{% extends "admin/base.html" %}
+{% block title %}项目分组{% endblock %}
+{% block content %}
+<h1>精选项目 · 项目分组</h1>
+<p class="hint">分组挂在所属分类下（如「涉外文旅与政务项目」挂在「精选项目」分类下）。分组名决定图片存放目录，改名会自动迁移目录。</p>
+
+<div class="panel">
+  <h2>新增分组</h2>
+  <form method="post" action="{{ url_for('admin_categories') }}">
+    <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+    <input type="hidden" name="action" value="add">
+    <div class="row3">
+      <div>
+        <label>所属分类</label>
+        <select name="classification_id" required>
+          <option value="">请选择一级分类</option>
+          {% for cl in cls %}
+          <option value="{{ cl.id }}">{{ cl.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div><label>分组名</label><input type="text" name="name" placeholder="如：涉外文旅与政务项目" required></div>
+      <div><label>排序</label><input type="number" name="sort" value="0"></div>
+    </div>
+    <label>附标题（显示在组名旁，如：财经 · 演艺 · 音乐 · 文化）</label>
+    <input type="text" name="subtitle" placeholder="如：财经 · 演艺 · 音乐 · 文化">
+    <label>标签（逗号分隔，显示在组底部）</label>
+    <input type="text" name="tags" placeholder="如：五百里音乐节,草莓音乐节">
+    <div style="margin-top: 18px;"><button class="btn" type="submit">添加分组</button></div>
+  </form>
+</div>
+
+{% for c in cats %}
+<div class="panel">
+  <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 12px;">
+    <h2 style="margin-bottom: 0;">{{ c.name }} <span class="count muted">· {{ c.cl_name }} · {{ c.n }} 个项目</span></h2>
+    <form method="post" action="{{ url_for('admin_categories') }}" onsubmit="return confirm('删除分组「{{ c.name }}」？其下全部项目和图片都会被删除！')">
+      <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+      <input type="hidden" name="action" value="delete">
+      <input type="hidden" name="id" value="{{ c.id }}">
+      <button class="btn small danger" type="submit">删除分组</button>
+    </form>
+  </div>
+  <form method="post" action="{{ url_for('admin_categories') }}">
+    <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+    <input type="hidden" name="action" value="edit">
+    <input type="hidden" name="id" value="{{ c.id }}">
+    <div class="row3">
+      <div>
+        <label>所属分类</label>
+        <select name="classification_id">
+          <option value="0">未归属</option>
+          {% for cl in cls %}
+          <option value="{{ cl.id }}" {% if cl.id == c.classification_id %}selected{% endif %}>{{ cl.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div><label>分组名</label><input type="text" name="name" value="{{ c.name }}" required></div>
+      <div><label>排序</label><input type="number" name="sort" value="{{ c.sort }}"></div>
+    </div>
+    <label>附标题</label>
+    <input type="text" name="subtitle" value="{{ c.subtitle }}">
+    <label>标签（逗号分隔）</label>
+    <input type="text" name="tags" value="{{ c.tags }}">
+    <div style="margin-top: 16px;"><button class="btn" type="submit">保存分组</button></div>
+  </form>
+</div>
+{% endfor %}
+{% endblock %}

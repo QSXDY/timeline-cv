@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% for s in nav_items %}
+{% if s.key == 'basic' %}
+<section class="hero{% if info.avatar %} with-avatar{% endif %}">
+  {% if info.avatar %}
+  <div class="hero-avatar"><img src="{{ url_for('static', filename='uploads/_avatar/' + info.avatar) | cdn }}" alt="{{ info.name }}"></div>
+  {% endif %}
+  <div class="hero-text">
+    <p class="eyebrow">{{ s.nav_label }}</p>
+    <h1>{{ info.name }}</h1>
+    <p class="role">{{ info.role }}</p>
+    <p class="lead">{{ info.lead }}</p>
+    <div class="facts">
+      <div><b>求职意向</b>{{ info.intent }}</div>
+      <div><b>期望薪资</b>{{ info.salary }}</div>
+      <div><b>期望工作地</b>{{ info.location }}</div>
+      <div><b>联系方式</b><a href="mailto:{{ info.email }}">{{ info.email }}</a></div>
+      <div><b>基本情况</b>{{ info.profile }}</div>
+    </div>
+  </div>
+</section>
+
+{% elif s.key == 'summary' %}
+<section id="summary">
+  <p class="eyebrow">{{ s.nav_label }}</p>
+  <h2>{{ s.title if s.title else summary.title }}</h2>
+  {% if s.subtitle %}<p class="sub">{{ s.subtitle }}</p>{% endif %}
+  <div class="cards">
+    {% for c in cards %}
+    <div class="card"><h3>{{ c.title }}</h3><p>{{ c.content }}</p></div>
+    {% endfor %}
+  </div>
+</section>
+
+{% elif s.key == 'projects' %}
+<section id="projects">
+  <p class="eyebrow">{{ s.nav_label }}</p>
+  <h2>{{ s.title if s.title else '把内容交给现场，把结果交给客户。' }}</h2>
+  {% if s.subtitle %}<p class="sub">{{ s.subtitle }}</p>{% endif %}
+
+  {% for cl in classifications %}
+  <div class="cl">
+    <h3 class="cat-title">{{ cl.name }}</h3>
+    {% for cat in cl.groups %}
+    <div class="group">
+      <div class="group-head"><h3>{{ cat.name }}</h3><span class="count">{{ cat.subtitle }}</span></div>
+      {% for p in cat.projects %}
+        {% if p.images %}
+        <details class="item">
+          <summary><b>{{ p.title }}</b>{% if p.pub_date %}<em class="date">{{ p.pub_date[:10].replace('-', '·') }}</em>{% endif %}{% if p.desc %}<span>{{ p.desc }}</span>{% endif %}<i>{{ p.n }} 图</i></summary>
+          <div class="igrid">
+            {% for img in p.images %}
+            <figure><a href="{{ img_url(cat.name, p.id, p.title, img.filename) }}" class="img-zoom" title="点击放大">
+              <div class="frame" data-o="{{ img.orientation }}">{% if img.type == 'video' %}<video data-src="{{ img_url(cat.name, p.id, p.title, img.filename) }}" preload="none" muted playsinline></video>{% else %}<img data-src="{{ img_url(cat.name, p.id, p.title, img.filename) }}" alt="{{ img.caption }}">{% endif %}</div></a>
+              {% if img.caption %}<figcaption>{{ img.caption }}</figcaption>{% endif %}
+            </figure>
+            {% endfor %}
+          </div>
+          {% if p.detail_html %}<div class="detail-html">{{ p.detail_html | cdn_html | safe }}</div>{% endif %}
+        </details>
+        {% else %}
+        <p class="plain"><b>{{ p.title }}</b>{% if p.desc %}<span> {{ p.desc }}</span>{% endif %}</p>
+        {% endif %}
+      {% endfor %}
+      {% if cat.tags %}
+      <div class="chips">{% for t in cat.tags.split(',') %}<span class="chip">{{ t }}</span>{% endfor %}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</section>
+
+{% elif s.key == 'experience' %}
+<section id="exp">
+  <p class="eyebrow">{{ s.nav_label }}</p>
+  <h2>{{ s.title if s.title else '电视台、广告公司、新媒体。' }}</h2>
+  {% if s.subtitle %}<p class="sub">{{ s.subtitle }}</p>{% endif %}
+  {% for e in exps %}
+  <div class="job">
+    <div class="head"><h3>{{ e.org }} · {{ e.position }}</h3><span class="years">{{ e.years }}</span></div>
+    {% if e.org_desc %}<p class="org">{{ e.org_desc }}</p>{% endif %}
+    <ul>
+      {% for line in e.content.split('\n') %}<li>{{ line }}</li>{% endfor %}
+    </ul>
+    {% if e.detail_html %}<div class="detail-html">{{ e.detail_html | cdn_html | safe }}</div>{% endif %}
+  </div>
+  {% endfor %}
+</section>
+
+{% elif s.key == 'skills' %}
+<section id="skill">
+  <p class="eyebrow">{{ s.nav_label }}</p>
+  <h2>{{ s.title if s.title else skills.title }}</h2>
+  {% if s.subtitle %}<p class="sub">{{ s.subtitle }}</p>{% endif %}
+  <div class="skill-grid">
+    {% for c in skill_cards %}
+    <div class="skill">
+      <h3>{{ c.title }}</h3>
+      <div class="chips">{% for t in c.tags %}<span class="chip">{{ t.name }}</span>{% endfor %}</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endfor %}
+{% endblock %}

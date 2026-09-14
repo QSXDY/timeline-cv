@@ -1,0 +1,118 @@
+{% extends "admin/base.html" %}
+{% block title %}系统设置{% endblock %}
+{% block content %}
+<h1>系统设置</h1>
+<p class="hint">管理员密码与 CDN（腾讯 EdgeOne）加速配置。</p>
+
+<form method="post" action="{{ url_for('admin_settings') }}">
+  <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+  <input type="hidden" name="action" value="password">
+  <div class="panel">
+    <h2>管理员密码</h2>
+    <p class="panel-sub">修改后下次登录使用新密码（PBKDF2 加盐存储，不保存明文）。</p>
+    <div class="row2">
+      <div>
+        <label>当前密码</label>
+        <input type="password" name="current" autocomplete="current-password" required>
+      </div>
+      <div>
+        <label>新密码</label>
+        <input type="password" name="new" autocomplete="new-password" minlength="6" required>
+      </div>
+    </div>
+    <label>确认新密码</label>
+    <input type="password" name="confirm" autocomplete="new-password" minlength="6" required>
+    <div style="margin-top: 22px;">
+      <button class="btn" type="submit">更新密码</button>
+    </div>
+  </div>
+</form>
+
+<form method="post" action="{{ url_for('admin_settings') }}">
+  <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+  <input type="hidden" name="action" value="cdn">
+  <div class="panel">
+    <h2>CDN 加速（腾讯 EdgeOne）</h2>
+    <p class="panel-sub">
+      附件目录为 <code>/static/uploads/**</code>，EdgeOne 域名直接回源到本服务即可，
+      把加速域名填到下方，开启后前台图片与视频 URL 全部走 CDN。
+    </p>
+    <label class="check-line">
+      <input type="checkbox" name="cdn_enabled" {% if cdn_enabled %}checked{% endif %}>
+      <span>启用 CDN</span>
+    </label>
+    <label>加速域名前缀</label>
+    <input type="text" name="cdn_base" value="{{ cdn_base }}" placeholder="https://cdn.yourdomain.com">
+    <p class="muted">仅填域名或协议+域名，如 https://img.example.com；不带尾部斜杠。</p>
+    <div style="margin-top: 22px;">
+      <button class="btn" type="submit">保存 CDN 设置</button>
+    </div>
+  </div>
+</form>
+
+<form method="post" action="{{ url_for('admin_settings') }}">
+  <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+  <input type="hidden" name="action" value="sections">
+  <div class="panel">
+    <h2>板块名称</h2>
+    <p class="panel-sub">板块名统一控制前台顶部导航、内容页大板块名称与后台左侧导航；「系统设置」仅控制后台，前台不显示。</p>
+    <div class="sec-grid">
+      {% for s in sec_list %}
+      <div class="sec-block" data-key="{{ s.key }}">
+        <h3>{{ s.label }}{% if s.note %}<span class="muted" style="font-weight: 400; font-size: 12px;">（{{ s.note }}）</span>{% endif %}</h3>
+        <label>板块名</label>
+        <input type="text" name="nav_{{ s.key }}" value="{{ s.nav_label }}">
+        <label>序号 <span class="sort-warn muted" style="display: none; color: #ff3b30; font-size: 12px;">已占用</span></label>
+        <input type="number" name="sort_{{ s.key }}" value="{{ s.sort }}" min="0" style="width: 90px;">
+      </div>
+      {% endfor %}
+    </div>
+    <div style="margin-top: 22px;">
+      <button class="btn" type="submit">保存板块名称</button>
+    </div>
+  </div>
+</form>
+
+<div class="panel" style="background: #fafafc;">
+  <h2>EdgeOne 挂载说明</h2>
+  <ol class="muted" style="line-height: 1.9; padding-left: 18px;">
+    <li>在腾讯云 EdgeOne 添加加速域名（如 cdn.yourdomain.com），源站类型选「源站域名/IP」，回源地址填部署本项目的服务器域名或 IP。</li>
+    <li>回源 Host 保持默认（加速域名回源到服务器同路径），这样 <code>/static/uploads/**</code> 会被 CDN 直接代理。</li>
+    <li>本项目 Docker 部署时将 <code>./data/uploads</code> 挂载为 <code>/app/static/uploads</code>，源站即服务器上的真实附件目录。</li>
+    <li>首次访问回源拉取后由 CDN 缓存，图片/视频会自动带上 EdgeOne 的缓存与压缩能力。</li>
+  </ol>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  "use strict";
+  var grid = document.querySelector(".sec-grid");
+  if (!grid) return;
+  var blocks = Array.prototype.slice.call(grid.querySelectorAll(".sec-block"));
+  var inputs = Array.prototype.slice.call(grid.querySelectorAll('input[name^="sort_"]'));
+  function resort() {
+    blocks.forEach(function (b) {
+      var i = b.querySelector('input[name^="sort_"]');
+      b._sort = parseInt(i.value, 10) || 0;
+    });
+    blocks.sort(function (a, b) { return a._sort - b._sort; });
+    blocks.forEach(function (b) { grid.appendChild(b); });
+    var seen = {};
+    blocks.forEach(function (b) {
+      var i = b.querySelector('input[name^="sort_"]');
+      var w = b.querySelector(".sort-warn");
+      if (seen[b._sort] && b._sort > 0) {
+        b.classList.add("dup");
+        if (w) w.style.display = "inline";
+      } else {
+        b.classList.remove("dup");
+        if (w) w.style.display = "none";
+      }
+      seen[b._sort] = true;
+    });
+  }
+  inputs.forEach(function (i) { i.addEventListener("change", resort); });
+})();
+</script>
+{% endblock %}
