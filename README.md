@@ -122,7 +122,7 @@ RESUME_IMAGE=yfq-resume:local docker compose up -d --build
 ```
 
 - **镜像**：`cnqsxdy/timeline-cv:latest`（Docker Hub，amd64 + arm64 双架构；
-  push main 自动重建，见「四·D」）；不设 `RESUME_IMAGE` 默认即拉此镜像
+  **打 tag 发版时自动构建**，见「四·D」）；不设 `RESUME_IMAGE` 默认即拉此镜像
 
 - **纯净镜像（不含任何用户数据）**：`.dockerignore` 已排除 `resume.db`、`secret.key`、
   `static/uploads/`、`backups/`、`logo`；**把镜像分享给别人 = 全新空站**
@@ -175,9 +175,8 @@ python -c "import app; c = app.app.test_client(); print('首页:', c.get('/').st
   `app.py` 备份文件 `open()` 泄漏 → `with` 上下文；全量 `%` 格式化 → f-string、import 排序、
   dict 推导等 15 项自动修复 + 3 文件统一格式化
 
-- **CI/CD 自动构建（GitHub Actions → Docker Hub）✅ 已验证（2026-09-15）**：push 到 main 自动构建推送
-  `:latest`（amd64 + arm64 双架构）；打 `v*` 标签自动推送 `:v1.0.0` / `:v1.0`。首次配置一次（见「四·D」），
-  之后**零操作**
+- **CI/CD 自动构建（GitHub Actions → Docker Hub）✅ 已验证（2026-09-15）**：**打 `v*` 标签才构建**（日常 push 不构建），
+  发版自动推送 `:latest` + `:v1.0.0` + `:v1.0`（amd64 + arm64 双架构）。首次配置一次（见「四·D」），之后发版只需打 tag
 - **两种部署模式**（docker-compose.yml 双模式）：
   - 生产（默认）：直接 `docker compose pull && docker compose up -d` —— 镜像默认
     `cnqsxdy/timeline-cv:latest`；升级 = 改 `.env` 版本号重拉
@@ -197,8 +196,8 @@ python -c "import app; c = app.app.test_client(); print('首页:', c.get('/').st
 3. **GitHub 仓库**（Settings → Secrets and variables → Actions → New repository secret）：
    - `DOCKERHUB_USERNAME` = 你的 Docker Hub 用户名
    - `DOCKERHUB_TOKEN` = 上一步的 token
-4. **触发验证**：push 一次代码（或 Actions 页手动 Run workflow），
-   构建成功后 Docker Hub 仓库即出现 `latest` 镜像；
+4. **触发验证**：打 tag `git tag v1.0.0 && git push --tags`（或 Actions 页手动 Run workflow），
+   构建成功后 Docker Hub 仓库即出现 `latest` + `v1.0.0` 镜像；
 5. **发布版本**：`git tag v1.0.0 && git push --tags` → 自动构建 `:v1.0.0` 与 `:v1.0`。
 
 > 别人部署你的镜像：`RESUME_IMAGE=<你的用户名>/timeline-cv:版本` + `docker compose pull && up -d`。

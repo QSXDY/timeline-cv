@@ -1,12 +1,11 @@
 name: Docker 自动构建推送
 
 # 触发条件：
-#   - push 到 main 分支        -> 构建并推送 :latest
-#   - 打 v* 标签（如 v1.0.0）   -> 同时推送 :v1.0.0 与 :v1.0
+#   - 打 v* 标签（如 v1.0.0）   -> 构建并推送 :latest + :v1.0.0 + :v1.0
 #   - 手动触发（Actions 页点 Run workflow）
+# 说明：日常 push 代码不会构建，只有发版（打 tag）才构建
 on:
   push:
-    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
 
@@ -44,9 +43,10 @@ jobs:
         with:
           images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            # 发版同时更新 latest（对齐 rocketai 习惯：版本号 + latest）
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
 
       - name: 构建并推送
         uses: docker/build-push-action@v7
