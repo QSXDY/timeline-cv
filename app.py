@@ -9,6 +9,7 @@ import os
 import re
 import secrets
 import shutil
+import sys
 import uuid
 from functools import wraps
 
@@ -1250,7 +1251,21 @@ def admin_settings():
 _auto_backup()
 
 if __name__ == "__main__":
-    if not os.path.exists(db.DB):
-        print("数据库不存在，请先运行：python migrate.py")
+    if "--reset-admin" in sys.argv:
+        # 管理员密码重置（服务器管理员特权操作，仅 shell 可触发）：
+        #   python app.py --reset-admin            -> 重置为 admin/admin
+        #   python app.py --reset-admin 新密码     -> 重置为指定密码
+        pw = "admin"
+        i = sys.argv.index("--reset-admin")
+        if i + 1 < len(sys.argv) and not sys.argv[i + 1].startswith("--"):
+            pw = sys.argv[i + 1]
+        conn = db.get_db()
+        conn.execute(
+            "UPDATE admin SET password_hash=? WHERE id=1",
+            (hash_password(pw),),
+        )
+        conn.commit()
+        conn.close()
+        print(f"[reset] 管理员密码已重置（用户名 admin，新密码：{pw}，登录后请立即修改）")
     else:
         app.run(host="127.0.0.1", port=5000, debug=False)

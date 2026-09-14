@@ -115,6 +115,9 @@ docker compose up -d --build
   `static/uploads/`、`backups/`、`logo`；**把镜像分享给别人 = 全新空站**
   （别人拉镜像、`docker compose up` 后首次启动自动建空库 + 默认管理员 **admin / admin**，
   登录后请在系统设置中改密码；也可用环境变量 `YFQ_ADMIN_USER` / `YFQ_ADMIN_PASS` 覆盖默认值）
+- **忘记管理员密码**（shell 特权操作，仅服务器管理员可执行；前台无重置入口）：
+  - 本地：`python app.py --reset-admin`（重置为 admin/admin）或 `python app.py --reset-admin 新密码`
+  - Docker：`docker exec -it yfq-resume python app.py --reset-admin 新密码`（只改密码哈希，数据不动）
 - 你自己的部署：`./data/` 挂载卷里有 `resume.db` 就直接用（不会被覆盖），没有则自动建空库
 - 数据持久化在宿主机 `./data/` 目录：`resume.db` + `secret.key` 在 `./data/`，
   上传图片在 `./data/uploads/`（与镜像分离，1Panel 文件管理可直接看到/备份）
