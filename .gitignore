@@ -7,6 +7,9 @@ venv/
 # 安全：登录密钥（绝不入库）
 secret.key
 
+# 部署环境变量（真实配置不入库；模板见 .env.example）
+.env
+
 # 数据库备份历史（当前库 resume.db 保留入库，bak 系列本地保留）
 resume.db.bak
 resume.db.bak_*

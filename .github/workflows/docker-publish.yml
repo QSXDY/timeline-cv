@@ -1,0 +1,55 @@
+name: Docker 自动构建推送
+
+# 触发条件：
+#   - push 到 main 分支        -> 构建并推送 :latest
+#   - 打 v* 标签（如 v1.0.0）   -> 同时推送 :v1.0.0 与 :v1.0
+#   - 手动触发（Actions 页点 Run workflow）
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: timeline-cv
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    # 先配置 GitHub Secrets（Settings -> Secrets and variables -> Actions）：
+    #   DOCKERHUB_USERNAME = Docker Hub 用户名
+    #   DOCKERHUB_TOKEN    = Docker Hub Access Token（Account Settings -> Security，
+    #                        权限勾 Read/Write/Delete）
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 准备 Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 登录 Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: 生成镜像标签（latest / v1.0.0 / v1.0）
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha
+
+      - name: 构建并推送
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
