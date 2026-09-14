@@ -344,7 +344,8 @@ def load_site_data():
             g["projects"] = [
                 dict(p)
                 for p in conn.execute(
-                    "SELECT * FROM projects WHERE category_id=? ORDER BY pub_date DESC, sort, id DESC",
+                    "SELECT * FROM projects WHERE category_id=? "
+                    "ORDER BY pub_date DESC, sort, id DESC",
                     (cat["id"],),
                 ).fetchall()
             ]
@@ -720,7 +721,8 @@ def admin_categories():
                     flash("分组已保存")
                 else:
                     conn.execute(
-                        """INSERT INTO categories (name, subtitle, tags, classification_id, sort)
+                        """INSERT INTO categories (name, subtitle, tags,
+                        classification_id, sort)
                                     VALUES (?, ?, ?, ?, ?)""",
                         (name, subtitle, tags, classification_id, sort),
                     )
@@ -786,7 +788,8 @@ def admin_projects():
             else:
                 today = datetime.datetime.now().strftime("%Y-%m-%d 12:00")
                 conn.execute(
-                    "INSERT INTO projects (category_id, title, desc, detail_html, pub_date, sort) VALUES (?, ?, '', '', ?, 255)",
+                    "INSERT INTO projects (category_id, title, desc, detail_html, "
+                    "pub_date, sort) VALUES (?, ?, '', '', ?, 255)",
                     (cid, title, today),
                 )
                 conn.commit()
@@ -817,7 +820,8 @@ def admin_projects():
             dict(p)
             for p in conn.execute(
                 "SELECT p.*, (SELECT COUNT(*) FROM images i WHERE i.project_id=p.id) n "
-                "FROM projects p WHERE category_id=? ORDER BY p.pub_date DESC, p.sort, p.id DESC",
+                "FROM projects p WHERE category_id=? "
+                "ORDER BY p.pub_date DESC, p.sort, p.id DESC",
                 (cid,),
             ).fetchall()
         ]
@@ -864,7 +868,8 @@ def admin_project_edit(pid):
                     try:
                         # 目录与标题解耦（id 前缀），改标题/分组不再迁移磁盘目录
                         conn.execute(
-                            """UPDATE projects SET category_id=?, title=?, desc=?, detail_html=?, pub_date=?, sort=?
+                            """UPDATE projects SET category_id=?, title=?, desc=?,
+                            detail_html=?, pub_date=?, sort=?
                                         WHERE id=?""",
                             (new_cat["id"], title, desc, detail, pub, sort, pid),
                         )
@@ -972,7 +977,8 @@ def upload_image(pid):
         "SELECT COALESCE(MAX(sort), -1) m FROM images WHERE project_id=?", (pid,)
     ).fetchone()["m"]
     conn.execute(
-        "INSERT INTO images (project_id, filename, orientation, type, caption, sort) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO images (project_id, filename, orientation, type, "
+        "caption, sort) VALUES (?, ?, ?, ?, ?, ?)",
         (pid, name, orientation, mtype, caption, m + 1),
     )
     conn.commit()
@@ -1068,7 +1074,8 @@ def admin_experience():
                 flash("职位不能为空")
             elif eid:
                 conn.execute(
-                    """UPDATE experiences SET position=?, org=?, org_desc=?, years=?, content=?, detail_html=?
+                    """UPDATE experiences SET position=?, org=?, org_desc=?,
+                    years=?, content=?, detail_html=?
                                 WHERE id=?""",
                     (position, org, org_desc, years, content, detail, eid),
                 )
@@ -1078,7 +1085,8 @@ def admin_experience():
                     "SELECT COALESCE(MAX(sort), -1) m FROM experiences"
                 ).fetchone()["m"]
                 conn.execute(
-                    """INSERT INTO experiences (position, org, org_desc, years, content, detail_html, sort)
+                    """INSERT INTO experiences (position, org, org_desc, years,
+                    content, detail_html, sort)
                                 VALUES (?, ?, ?, ?, ?, ?, ?)""",
                     (position, org, org_desc, years, content, detail, m + 1),
                 )
@@ -1297,6 +1305,8 @@ if __name__ == "__main__":
         )
         conn.commit()
         conn.close()
-        print(f"[reset] 管理员密码已重置（用户名 admin，新密码：{pw}，登录后请立即修改）")
+        print(
+            f"[reset] 管理员密码已重置（用户名 admin，新密码：{pw}，登录后请立即修改）"
+        )
     else:
         app.run(host="127.0.0.1", port=5000, debug=False)

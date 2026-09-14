@@ -17,9 +17,9 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 OLD = os.path.dirname(BASE)  # 简历/（_gen.py 所在目录）
 sys.path.insert(0, OLD)
 
-from _gen import AIGC_PHOTOS, FIG, GROUPS, folder_files, portrait
+from _gen import AIGC_PHOTOS, FIG, GROUPS, folder_files, portrait  # noqa: E402
 
-from db import DB, get_db, init_db
+from db import DB, get_db, init_db  # noqa: E402
 
 UPLOADS = os.path.join(BASE, "static", "uploads")
 
@@ -133,13 +133,15 @@ def main():
     n_img = 0
     for ci, (gname, gcount, items, chips) in enumerate(GROUPS):
         cur.execute(
-            "INSERT INTO categories (name, subtitle, tags, kind, sort) VALUES (?, ?, ?, 'group', ?)",
+            "INSERT INTO categories (name, subtitle, tags, kind, sort) "
+            "VALUES (?, ?, ?, 'group', ?)",
             (gname, gcount, ",".join(chips), ci),
         )
         cid = cur.lastrowid
         for pi, (title, desc, photos) in enumerate(items):
             cur.execute(
-                "INSERT INTO projects (category_id, title, desc, detail_html, sort) VALUES (?, ?, ?, '', ?)",
+                "INSERT INTO projects (category_id, title, desc, detail_html, "
+                "sort) VALUES (?, ?, ?, '', ?)",
                 (cid, title, desc, pi),
             )
             pid = cur.lastrowid
@@ -147,7 +149,8 @@ def main():
                 for prefix, count, label in photos:
                     for rel in folder_files(prefix)[:count]:
                         cur.execute(
-                            "INSERT INTO images (project_id, filename, orientation, caption, sort) VALUES (?, ?, ?, ?, ?)",
+                            "INSERT INTO images (project_id, filename, orientation, "
+                            "caption, sort) VALUES (?, ?, ?, ?, ?)",
                             (
                                 pid,
                                 copy_photo(gname, title, rel),
@@ -176,7 +179,8 @@ def main():
     )
     cid = cur.lastrowid
     cur.execute(
-        "INSERT INTO projects (category_id, title, desc, detail_html, sort) VALUES (?, ?, ?, ?, 0)",
+        "INSERT INTO projects (category_id, title, desc, "
+        "detail_html, sort) VALUES (?, ?, ?, ?, 0)",
         (
             cid,
             "AIGC 内容与应用运营",
@@ -188,7 +192,8 @@ def main():
     for i, (prefix, _count, label) in enumerate(AIGC_PHOTOS):
         rel = folder_files(prefix)[0]
         cur.execute(
-            "INSERT INTO images (project_id, filename, orientation, caption, sort) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO images (project_id, filename, orientation, "
+            "caption, sort) VALUES (?, ?, ?, ?, ?)",
             (
                 pid,
                 copy_photo("AIGC 经历 · 2023 至今", "AIGC 内容与应用运营", rel),
@@ -235,7 +240,8 @@ def main():
     ]
     for i, (pos, org, org_desc, years, lines) in enumerate(exps):
         cur.execute(
-            "INSERT INTO experiences (position, org, org_desc, years, content, detail_html, sort) VALUES (?, ?, ?, ?, ?, '', ?)",
+            "INSERT INTO experiences (position, org, org_desc, years, "
+            "content, detail_html, sort) VALUES (?, ?, ?, ?, ?, '', ?)",
             (pos, org, org_desc, years, "\n".join(lines), i),
         )
 

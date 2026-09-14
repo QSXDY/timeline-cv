@@ -6,6 +6,7 @@
 #   DTZ005        —— 本地单机应用（无多时区），datetime.now() 无需 tz 参数。
 [lint]
 ignore = ["BLE001", "S110", "DTZ005"]
+extend-select = ["E402"]
 
 [format]
 quote-style = "double"
