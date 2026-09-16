@@ -150,7 +150,34 @@ def init_db():
             conn.commit()
         except Exception:
             pass
+    # 默认板块种子：全新部署时后台侧边栏/前台导航/设置页才有内容；
+    # INSERT OR IGNORE 幂等，不影响已有数据的用户。
+    _seed_defaults(conn)
     conn.close()
+
+
+def _seed_defaults(conn):
+    """全新部署默认数据（幂等）：
+    - sections：6 个默认板块（后台侧边栏、前台导航、板块名称设置页）
+    - basic_info：默认姓名/职位（前台与后台标题回退）
+    - settings：CDN 等默认键占位（可选，缺省时代码有回退，不必写）"""
+    sections = (
+        ("basic", "基础信息", 1),
+        ("experience", "工作经历", 2),
+        ("summary", "个人概要", 3),
+        ("skills", "专业技能", 4),
+        ("projects", "精选项目", 5),
+        ("system", "系统设置", 6),
+    )
+    for key, label, sort in sections:
+        conn.execute(
+            "INSERT OR IGNORE INTO sections (key, nav_label, sort) VALUES (?, ?, ?)",
+            (key, label, sort),
+        )
+    conn.execute(
+        "INSERT OR IGNORE INTO basic_info (id, name, role) VALUES (1, '你的姓名', '你的职位')"
+    )
+    conn.commit()
 
 
 if __name__ == "__main__":
