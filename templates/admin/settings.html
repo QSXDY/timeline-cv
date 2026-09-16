@@ -10,16 +10,10 @@
   <div class="panel">
     <h2>管理员密码</h2>
     <p class="panel-sub">修改后下次登录使用新密码（PBKDF2 加盐存储，不保存明文）。</p>
-    <div class="row2">
-      <div>
-        <label>当前密码</label>
-        <input type="password" name="current" autocomplete="current-password" required>
-      </div>
-      <div>
-        <label>新密码</label>
-        <input type="password" name="new" autocomplete="new-password" minlength="6" required>
-      </div>
-    </div>
+    <label>当前密码</label>
+    <input type="password" name="current" autocomplete="current-password" required>
+    <label>新密码</label>
+    <input type="password" name="new" autocomplete="new-password" minlength="6" required>
     <label>确认新密码</label>
     <input type="password" name="confirm" autocomplete="new-password" minlength="6" required>
     <div style="margin-top: 22px;">
@@ -34,9 +28,25 @@
   <div class="panel">
     <h2>CDN 加速（腾讯 EdgeOne）</h2>
     <p class="panel-sub">
-      附件目录为 <code>/static/uploads/**</code>，EdgeOne 域名直接回源到本服务即可，
-      把加速域名填到下方，开启后前台图片与视频 URL 全部走 CDN。
+      附件目录为 <code>/static/uploads/**</code>。下方两种加速方案任选其一，按需配置：
     </p>
+    <div class="cdn-plan">
+      <h3>方案一：子域名只加速附件（推荐，零额外配置）</h3>
+      <ol>
+        <li>在 EdgeOne 添加一个子域名（如 <code>cdn.yourdomain.com</code>），源站类型选「源站域名/IP」，回源地址填部署本项目的服务器域名或 IP；</li>
+        <li>把该子域名填入上方「加速域名前缀」（如 <code>https://cdn.yourdomain.com</code>），并开启 CDN；</li>
+        <li>效果：仅图片、视频、头像等附件走 CDN；前台页面、后台、CSS/JS 仍由源站直出，<b>无需任何排除规则</b>。</li>
+      </ol>
+    </div>
+    <div class="cdn-plan">
+      <h3>方案二：主域名全站加速（需要配置排除规则）</h3>
+      <ol>
+        <li>把主域名接入 EdgeOne 全站加速，页面、后台、附件所有请求都经 CDN；</li>
+        <li><b>必须添加排除规则</b>：EdgeOne 控制台 → 规则引擎 → 匹配 URL Path 前缀 <code>/adminc</code> → 操作选「节点缓存 TTL：不缓存」，否则后台登录与管理会被缓存导致异常；</li>
+        <li>建议同时让 HTML 动态页面不缓存（或开启智能加速），避免前台内容更新后不实时；</li>
+        <li>「加速域名前缀」填主域名或独立子域名均可，两种都需配置上述排除规则。</li>
+      </ol>
+    </div>
     <label class="check-line">
       <input type="checkbox" name="cdn_enabled" {% if cdn_enabled %}checked{% endif %}>
       <span>启用 CDN</span>

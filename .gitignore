@@ -22,3 +22,7 @@ backups/
 .preview/
 .DS_Store
 Thumbs.db
+
+# 用户本地数据（不入库，保持仓库与镜像干净）
+resume.db
+static/uploads/

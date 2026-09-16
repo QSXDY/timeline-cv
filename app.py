@@ -10,6 +10,8 @@ import re
 import secrets
 import shutil
 import sys
+import threading
+import time
 import uuid
 from functools import wraps
 
@@ -230,36 +232,144 @@ def _clean_editor_orphans(conn, detail_html):
                 pass
 
 
-def _auto_backup():
-    """启动时每日备份一次 SQLite 到 backups/，保留最近 7 份；多进程安全（以日期文件为锁）。"""
+def _backup_dir():
+    return os.environ.get("RESUME_BACKUP_DIR", os.path.join(BASE, "backups"))
+
+
+def _main_db_path():
+    return os.environ.get("RESUME_DB", os.path.join(BASE, "resume.db"))
+
+
+def _backup_keep(prefix, default):
+    """按文件名（时间戳前缀）保留最近 N 份，返回清理数量；只清理白名单前缀文件。"""
+    import glob
+
+    pat = os.path.join(_backup_dir(), prefix + "*.db")
+    files = sorted(glob.glob(pat))
+    n = int(os.environ.get("RESUME_BACKUP_KEEP", default))
+    removed = 0
+    for f in files[:-n] if n > 0 else files:
+        try:
+            os.remove(f)
+            removed += 1
+        except OSError:
+            pass
+    return removed
+
+
+def _snapshot_db(dst_path):
+    """用 SQLite backup API 生成主库一致性快照（WAL 安全：copy2 只复制主库文件，
+    在 WAL 模式下会得到 0B/不完整快照）。调用方为主库，目标为新备份文件。"""
+    import sqlite3 as _s
+
+    src = _s.connect(_main_db_path())
     try:
-        backup_dir = os.environ.get("RESUME_BACKUP_DIR", os.path.join(BASE, "backups"))
+        dst = _s.connect(dst_path)
+        try:
+            src.backup(dst)
+        finally:
+            dst.close()
+    finally:
+        src.close()
+
+
+def _valid_backup(path):
+    """校验备份文件是否为有效非空 SQLite 库，防止误恢复 0B/损坏文件而清空主库。"""
+    try:
+        if os.path.getsize(path) < 512:
+            return False
+        with open(path, "rb") as f:
+            if f.read(16) != b"SQLite format 3\x00":
+                return False
+        return True
+    except OSError:
+        return False
+
+
+def _auto_backup():
+    """每日自动备份：当天（resume-YYYYMMDD.db）只备份一次，保留最近 KEEP 份
+    （环境变量 RESUME_BACKUP_KEEP 可配置，默认 7）。
+    触发源有三处：启动时、后台守护线程（每天凌晨 3 点）、每次请求惰性补漏；
+    用「日期标记文件」+ 原子创建去重，多进程/多线程并发也不会同一天重复备份。"""
+    try:
+        backup_dir = _backup_dir()
         os.makedirs(backup_dir, exist_ok=True)
         today = datetime.datetime.now().strftime("%Y%m%d")
         marker = os.path.join(backup_dir, "last-" + today)
-        if os.path.exists(marker):
+        try:
+            # O_CREAT|O_EXCL：只有第一个到达者能建标记，其余并发调用直接跳过
+            _fd = os.open(marker, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(_fd, b"1")
+            os.close(_fd)
+        except FileExistsError:
             return
-        src = os.environ.get("RESUME_DB", os.path.join(BASE, "resume.db"))
+        src = _main_db_path()
         if not os.path.exists(src):
             return
-        import shutil as _sh
 
         dst = os.path.join(backup_dir, f"resume-{today}.db")
-        _sh.copy2(src, dst)
-        with open(marker, "w", encoding="utf-8") as _f:
-            _f.write("1")
-        # 清理 7 天前的备份
-        import glob
-
-        olds = sorted(glob.glob(os.path.join(backup_dir, "resume-*.db")))[:-7]
-        for f in olds:
-            try:
-                os.remove(f)
-            except OSError:
-                pass
+        _snapshot_db(dst)
+        _backup_keep("resume-", os.environ.get("RESUME_BACKUP_KEEP", "7"))
         print("[backup] ->", dst)
     except Exception as e:
         print("[backup] skip:", e)
+
+
+def _manual_backup():
+    """手动备份：manual-YYYYMMDD-HHMMSS.db，保留最近 10 份。返回备份文件名。"""
+    backup_dir = _backup_dir()
+    os.makedirs(backup_dir, exist_ok=True)
+    src = _main_db_path()
+    if not os.path.exists(src):
+        raise RuntimeError("主数据库文件不存在，无法备份")
+
+    name = "manual-" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S") + ".db"
+    _snapshot_db(os.path.join(backup_dir, name))
+    _backup_keep("manual-", os.environ.get("RESUME_MANUAL_KEEP", "10"))
+    return name
+
+
+def _pre_restore_snapshot():
+    """恢复前快照：当日第一次执行恢复时，自动保存当前库为 pre-restore-YYYYMMDD.db 并固定；
+    当日再次恢复不覆盖（保留客户反悔的锚点）；按 RESUME_PRE_KEEP（默认 7 天）自动清理更早的快照。
+    返回快照文件名；当日已有快照则返回已有文件名，不重复生成。"""
+    backup_dir = _backup_dir()
+    os.makedirs(backup_dir, exist_ok=True)
+    src = _main_db_path()
+    if not os.path.exists(src):
+        return ""
+    today = datetime.datetime.now().strftime("%Y%m%d")
+    name = f"pre-restore-{today}.db"
+    path = os.path.join(backup_dir, name)
+    if os.path.exists(path):
+        return name
+    _snapshot_db(path)
+    _backup_keep("pre-restore-", os.environ.get("RESUME_PRE_KEEP", "7"))
+    return name
+
+
+_BACKUP_PREFIXES = ("resume-", "manual-", "pre-restore-")
+
+
+def _safe_backup_path(fn):
+    """校验备份文件名，防路径穿越：必须是白名单前缀 + .db，且解析后在备份目录内。"""
+    import glob as _g
+
+    if not fn or "/" in fn or "\\" in fn or ".." in fn:
+        return None
+    if not fn.endswith(".db"):
+        return None
+    if not fn.startswith(_BACKUP_PREFIXES):
+        return None
+    full = os.path.realpath(os.path.join(_backup_dir(), fn))
+    base = os.path.realpath(_backup_dir())
+    if not (full == base or full.startswith(base + os.sep)):
+        return None
+    if full == os.path.realpath(_main_db_path()):
+        return None  # 绝不删除/恢复主库自身
+    if not os.path.isfile(full):
+        return None
+    return full
 
 
 _SEC_ANCHOR = {
@@ -298,6 +408,7 @@ _ADMIN_ACTIVE = (
     ("/adminc/experience", "experience"),
     ("/adminc/skills", "skills"),
     ("/adminc/settings", "settings"),
+    ("/adminc/backups", "backups"),
 )
 
 
@@ -321,6 +432,35 @@ def csrf_protect():
         form = request.form.get("_csrf")
         if not token or not form or not secrets.compare_digest(token, form):
             abort(400, description="CSRF 校验失败，请刷新页面重试")
+
+
+@app.before_request
+def lazy_daily_backup():
+    """惰性补漏：每次请求顺手检查当天是否已备份，跨天/错过凌晨3点则自动补一份。
+    开销仅一次文件 stat，当天已备份则直接返回。"""
+    try:
+        backup_dir = _backup_dir()
+        today = datetime.datetime.now().strftime("%Y%m%d")
+        marker = os.path.join(backup_dir, "last-" + today)
+        if not os.path.exists(marker):
+            _auto_backup()
+    except Exception:
+        pass  # 备份失败不影响正常访问
+
+
+def _backup_scheduler():
+    """后台守护线程：进程常驻时，每天凌晨 3 点自动备份一次。
+    由 _auto_backup 的日期标记去重，与启动备份、惰性备份互不冲突。"""
+    while True:
+        try:
+            now = datetime.datetime.now()
+            nxt = now.replace(hour=3, minute=0, second=0, microsecond=0)
+            if nxt <= now:
+                nxt += datetime.timedelta(days=1)
+            time.sleep(max(1, (nxt - now).total_seconds()))
+            _auto_backup()
+        except Exception:
+            time.sleep(3600)
 
 
 # ---------------------------------------------------------------- 前台
@@ -1286,8 +1426,171 @@ def admin_settings():
     )
 
 
+def _fmt_size(n):
+    if n >= 1024 * 1024:
+        return f"{n / 1024 / 1024:.1f} MB"
+    if n >= 1024:
+        return f"{n / 1024:.1f} KB"
+    return f"{n} B"
+
+
+def _backup_entries():
+    """列出备份目录中的全部备份（按文件名倒序=最新在前），附类型与展示用日期。"""
+    import glob
+
+    items = []
+    for f in glob.glob(os.path.join(_backup_dir(), "*.db")):
+        name = os.path.basename(f)
+        if not name.startswith(_BACKUP_PREFIXES):
+            continue
+        if name.startswith("resume-"):
+            kind = "每日自动"
+            try:
+                show = datetime.datetime.strptime(name[7:15], "%Y%m%d").strftime("%Y-%m-%d")
+            except Exception:
+                show = name
+        elif name.startswith("manual-"):
+            kind = "手动备份"
+            try:
+                show = datetime.datetime.strptime(name[7:22], "%Y%m%d-%H%M%S").strftime("%Y-%m-%d %H:%M:%S")
+            except Exception:
+                show = name
+        else:
+            kind = "当日首次恢复前快照"
+            try:
+                # 新命名 pre-restore-YYYYMMDD.db（按天固定）；兼容旧格式 pre-restore-YYYYMMDDHHMMSS.db
+                if len(name) >= 32:
+                    show = datetime.datetime.strptime(name[13:27], "%Y%m%d%H%M%S").strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                    show = datetime.datetime.strptime(name[13:21], "%Y%m%d").strftime("%Y-%m-%d")
+            except Exception:
+                show = name
+        try:
+            size = os.path.getsize(f)
+            ts = os.path.getmtime(f)
+            mtime = datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M")
+        except OSError:
+            size, ts, mtime = 0, 0, ""
+        items.append({
+            "name": name, "kind": kind, "show": show,
+            "size": _fmt_size(size), "mtime": mtime, "_ts": ts,
+            "valid": _valid_backup(f),
+        })
+    # 跨类型统一按备份创建时间倒序（最新在顶部）
+    items.sort(key=lambda x: x["_ts"], reverse=True)
+    return items
+
+
+@app.route("/adminc/backups", methods=["GET", "POST"])
+@login_required
+def admin_backups():
+    conn = None
+    if request.method == "POST":
+        action = request.form.get("action", "")
+        if action == "backup":
+            # 手动立即备份
+            try:
+                name = _manual_backup()
+                flash(f"手动备份完成：{name}")
+            except Exception as e:
+                flash(f"备份失败：{e}")
+        elif action == "restore":
+            # 恢复指定备份：二次确认 + 恢复前自动快照 + SQLite 在线备份（不换文件）
+            fn = request.form.get("filename", "").strip()
+            confirmed = request.form.get("confirm") == "1"
+            bak = _safe_backup_path(fn)
+            if not bak:
+                flash("无效的备份文件")
+            elif not confirmed:
+                flash("已取消：恢复操作需勾选确认才能执行")
+            elif not _valid_backup(bak):
+                flash("该备份文件为空或已损坏，已取消恢复（避免清空当前数据）")
+            else:
+                try:
+                    # 先把恢复源复制到临时文件再恢复：避免快照清理（按天删旧快照）误删
+                    # 正在恢复的源文件——源文件被删后 sqlite3.connect 会重建空文件，把空库写进主库。
+                    import tempfile as _tf
+
+                    _fd, tmp_path = _tf.mkstemp(suffix=".db")
+                    os.close(_fd)
+                    try:
+                        shutil.copy2(bak, tmp_path)
+                        snap = _pre_restore_snapshot()
+                        import sqlite3 as _s
+
+                        src_conn = _s.connect(tmp_path)
+                        try:
+                            dst_conn = _s.connect(_main_db_path())
+                            try:
+                                # backup() 把调用方（备份文件）内容写入目标（主库），主库被覆盖为备份内容
+                                src_conn.backup(dst_conn)
+                            finally:
+                                dst_conn.close()
+                        finally:
+                            src_conn.close()
+                    finally:
+                        try:
+                            os.remove(tmp_path)
+                        except OSError:
+                            pass
+                    msg = f"已从 {fn} 恢复成功"
+                    if snap:
+                        msg += f"；恢复前数据已存为 {snap}"
+                    flash(msg)
+                except Exception as e:
+                    flash(f"恢复失败：{e}")
+        elif action == "delete":
+            fn = request.form.get("filename", "").strip()
+            confirmed = request.form.get("confirm") == "1"
+            bak = _safe_backup_path(fn)
+            if not bak:
+                flash("无效的备份文件")
+            elif not confirmed:
+                flash("已取消删除")
+            else:
+                try:
+                    os.remove(bak)
+                    flash(f"已删除备份：{fn}")
+                except OSError as e:
+                    flash(f"删除失败：{e}")
+        return redirect(url_for("admin_backups"))
+
+    # GET：读取主库信息与备份列表
+    db_path = _main_db_path()
+    try:
+        db_size = _fmt_size(os.path.getsize(db_path))
+        db_mtime = datetime.datetime.fromtimestamp(os.path.getmtime(db_path)).strftime("%Y-%m-%d %H:%M:%S")
+    except OSError:
+        db_size, db_mtime = "未知", "未知"
+    keep = os.environ.get("RESUME_BACKUP_KEEP", "7")
+    pre_keep = os.environ.get("RESUME_PRE_KEEP", "7")
+    # 页面只展示相对路径（避免暴露服务器文件系统结构；Docker 部署时为数据卷内 backups/）
+    bd = _backup_dir()
+    try:
+        rel = os.path.relpath(bd, BASE)
+        if rel.startswith(".."):
+            rel = os.path.basename(bd)
+    except ValueError:
+        rel = os.path.basename(bd)
+    return render_template(
+        "admin/backups.html",
+        entries=_backup_entries(),
+        db_size=db_size,
+        db_mtime=db_mtime,
+        keep=keep,
+        pre_keep=pre_keep,
+        backup_dir=rel,
+    )
+
+
 # 启动时每日自动备份（模块导入即执行，覆盖 gunicorn 生产模式）
 _auto_backup()
+
+# 后台守护线程：每天凌晨 3 点自动备份（进程常驻即有效）
+try:
+    threading.Thread(target=_backup_scheduler, daemon=True, name="daily-backup").start()
+except Exception:
+    pass
 
 if __name__ == "__main__":
     if "--reset-admin" in sys.argv:

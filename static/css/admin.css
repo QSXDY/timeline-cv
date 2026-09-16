@@ -351,3 +351,66 @@ input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator {
   opacity: 0.45; cursor: pointer; padding: 0;
 }
+
+/* ---------- 数据备份页 ---------- */
+.warn-banner {
+  background: #fff7ed; border: 1px solid #f5c26b; border-left: 4px solid #e8930c;
+  color: #6b4b12; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px;
+  font-size: 14px; line-height: 1.8;
+}
+.warn-banner strong { font-size: 15px; color: #8a5a00; }
+.warn-banner ul { margin: 6px 0 0; padding-left: 20px; }
+.backup-table { width: 100%; border-collapse: collapse; }
+.backup-table th, .backup-table td {
+  text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: top;
+}
+.backup-table th { color: var(--ink-3); font-weight: 600; font-size: 12px; letter-spacing: 0.03em; }
+.backup-table tr:last-child td { border-bottom: 0; }
+.op-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn.btn-sm { padding: 5px 14px; font-size: 12.5px; }
+.confirm-box {
+  margin-top: 10px; background: #fff8f8; border: 1px solid #f3b6b0;
+  border-left: 4px solid #ff3b30; border-radius: 8px; padding: 12px 14px; font-size: 13px;
+}
+.confirm-box.del { background: #fafafc; border-color: var(--line); border-left-color: var(--ink-3); }
+.confirm-title { margin: 0 0 6px; font-size: 14px; }
+.confirm-warn { margin: 0 0 10px; color: #8a2a20; line-height: 1.7; }
+.confirm-box .check-line { margin-bottom: 10px; }
+
+/* ---------- 确认弹窗 ---------- */
+.modal-mask {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(20, 20, 25, 0.45);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal {
+  width: 420px; max-width: 100%;
+  background: #fff; border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+  padding: 20px 22px;
+}
+.modal h3 { margin: 0 0 12px; font-size: 16px; color: var(--ink); }
+.modal-body .confirm-warn {
+  margin: 0 0 14px; padding: 12px 14px;
+  background: #fff8f8; border: 1px solid #f3b6b0; border-left: 4px solid #ff3b30;
+  border-radius: 8px; color: #8a2a20; font-size: 13px; line-height: 1.7;
+}
+.modal-body .check-line { font-size: 13px; }
+
+/* hidden 优先于 flex 显示（防止弹窗默认弹出遮屏） */
+.modal-mask[hidden] { display: none; }
+
+/* 无效备份：恢复禁用 + 异常标记 */
+.btn.disabled, .btn[disabled] { opacity: 0.45; cursor: not-allowed; }
+.badge-warn {
+  margin-left: 6px; padding: 1px 6px; font-size: 11px; color: #b3402c;
+  background: #fff1ec; border: 1px solid #f3c2b4; border-radius: 4px;
+}
+
+/* CDN 两种加速方案说明 */
+.cdn-plan { margin: 12px 0 0; padding: 12px 14px; background: #f5f7fa; border-radius: 10px; }
+.cdn-plan h3 { font-size: 13.5px; font-weight: 600; margin: 0 0 8px; color: var(--ink); }
+.cdn-plan ol { margin: 0; padding-left: 18px; line-height: 1.85; }
+.cdn-plan li { font-size: 13px; color: var(--ink-2); }
+.cdn-plan code { background: #eef1f5; padding: 1px 5px; border-radius: 4px; font-size: 12.5px; }

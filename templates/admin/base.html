@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}后台管理{% endblock %} · 杨芳清简历</title>
 <link rel="icon" href="{{ url_for('static', filename='logo.webp') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v=20260915n">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v=20260916b">
 </head>
 <body>
 <div class="admin-wrap">
@@ -32,6 +32,7 @@
       <a class="nav {% if active == 'settings' %}active{% endif %}" href="{{ url_for('admin_settings') }}">{{ s.nav_label }}</a>
       {% endif %}
       {% endfor %}
+      <a class="nav {% if active == 'backups' %}active{% endif %}" href="{{ url_for('admin_backups') }}">数据备份</a>
     </nav>
     <div class="side-foot">
       <form method="post" action="{{ url_for('admin_logout') }}">

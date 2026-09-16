@@ -1,0 +1,145 @@
+{% extends "admin/base.html" %}
+{% block title %}数据备份{% endblock %}
+{% block content %}
+<h1>数据备份</h1>
+<p class="hint">备份目录：<code>{{ backup_dir }}</code> · 自动备份保留 {{ keep }} 份（环境变量 <code>RESUME_BACKUP_KEEP</code> 可调）。</p>
+
+<div class="warn-banner">
+  <strong>⚠️ 恢复备份会覆盖当前全部数据</strong>
+  <p>恢复后，<b>备份时间点之后新增或修改的内容将全部丢失</b>（项目、图片、文案、设置等）。此操作不可撤销，请务必谨慎操作：</p>
+  <ul>
+    <li>恢复前，系统会把当前数据存为「当日首次恢复前快照」并<b>固定保留</b>（当天后续恢复不再覆盖），作为后悔药；</li>
+    <li>请先确认你要恢复的备份日期，再勾选确认执行；</li>
+    <li>如不确定，建议先点「手动备份」把当前状态存一份，再恢复。</li>
+  </ul>
+</div>
+
+<form method="post" action="{{ url_for('admin_backups') }}">
+  <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+  <input type="hidden" name="action" value="backup">
+  <div class="panel">
+    <h2>当前数据库</h2>
+    <div class="row2">
+      <div><label>当前数据量</label><input type="text" value="{{ db_size }}" readonly></div>
+      <div><label>最后更新时间</label><input type="text" value="{{ db_mtime }}" readonly></div>
+    </div>
+    <p class="muted">建议在修改内容前先手动备份一份，便于随时回退。</p>
+    <div style="margin-top: 22px;">
+      <button class="btn" type="submit">立即手动备份</button>
+    </div>
+  </div>
+</form>
+
+<div class="panel">
+  <h2>历史备份</h2>
+  <p class="panel-sub">每日自动备份：每天凌晨 3 点自动备份（当天仅一份，日常访问也会自动补漏，不依赖重启）。当日首次恢复前快照：当天第一次恢复时自动保存并固定（保留最近 {{ pre_keep }} 天，供反悔）。手动备份为额外存档。</p>
+  {% if entries %}
+  <table class="backup-table">
+    <thead>
+      <tr><th>类型</th><th>备份时间</th><th>大小</th><th style="width: 190px;">操作</th></tr>
+    </thead>
+    <tbody>
+      {% for e in entries %}
+      <tr>
+        <td>{{ e.kind }}</td>
+        <td>{{ e.show }}</td>
+        <td>{{ e.size }}</td>
+        <td>
+          <div class="op-row">
+            {% if e.valid %}
+            <button class="btn btn-sm js-restore" type="button" data-name="{{ e.name }}" data-show="{{ e.kind }} · {{ e.show }}">恢复</button>
+            {% else %}
+            <span class="btn btn-sm disabled" title="文件为空或已损坏，无法恢复">恢复</span>
+            {% endif %}
+            <button class="btn btn-sm ghost js-delete" type="button" data-name="{{ e.name }}">删除</button>
+            {% if not e.valid %}<span class="badge-warn">异常</span>{% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">暂无备份。点击上方「立即手动备份」创建第一份，或等待下次启动自动备份。</p>
+  {% endif %}
+</div>
+
+<!-- 恢复 / 删除确认弹窗 -->
+<div class="modal-mask" id="confirmModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <h3 id="mTitle">确认操作</h3>
+    <div class="modal-body">
+      <p class="confirm-warn" id="mWarn"></p>
+      <form method="post" id="mForm" action="{{ url_for('admin_backups') }}">
+        <input type="hidden" name="_csrf" value="{{ session.csrf }}">
+        <input type="hidden" name="action" id="mAction" value="">
+        <input type="hidden" name="filename" id="mFilename" value="">
+        <label class="check-line">
+          <input type="checkbox" name="confirm" value="1" id="mConfirm">
+          <span id="mCheckText">我已理解风险，确认执行</span>
+        </label>
+        <div class="op-row" style="margin-top: 14px;">
+          <button class="btn btn-sm danger" type="submit" id="mDo" disabled>确认</button>
+          <button class="btn btn-sm ghost" type="button" id="mCancel">取消</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  "use strict";
+  var mask = document.getElementById("confirmModal");
+  var cb = document.getElementById("mConfirm");
+  var doBtn = document.getElementById("mDo");
+  var form = document.getElementById("mForm");
+  var action = document.getElementById("mAction");
+  var filename = document.getElementById("mFilename");
+  var warn = document.getElementById("mWarn");
+  var title = document.getElementById("mTitle");
+  var checkText = document.getElementById("mCheckText");
+
+  function closeModal() {
+    mask.hidden = true;
+    cb.checked = false;
+    doBtn.disabled = true;
+  }
+  function openModal(a, fn, t, w, ct) {
+    action.value = a;
+    filename.value = fn;
+    title.textContent = t;
+    warn.innerHTML = w;
+    checkText.textContent = ct;
+    cb.checked = false;
+    doBtn.disabled = true;
+    mask.hidden = false;
+  }
+
+  document.querySelectorAll(".js-restore").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var n = btn.dataset.name;
+      var s = btn.dataset.show;
+      openModal("restore", n, "恢复备份",
+        "<b>将覆盖当前全部数据</b>，恢复后「" + s + "」之后新增/修改的内容会丢失。系统会先自动保存当前数据快照。",
+        "我已理解风险，确认从 " + s + " 恢复");
+    });
+  });
+  document.querySelectorAll(".js-delete").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      openModal("delete", btn.dataset.name, "删除备份",
+        "仅删除这份备份文件，不影响当前数据。删除后不可恢复。",
+        "确认删除这份备份（仅删除备份文件，不影响当前数据）");
+    });
+  });
+
+  cb.addEventListener("change", function () { doBtn.disabled = !cb.checked; });
+  document.getElementById("mCancel").addEventListener("click", closeModal);
+  mask.addEventListener("click", function (e) { if (e.target === mask) closeModal(); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !mask.hidden) closeModal();
+  });
+})();
+</script>
+{% endblock %}
